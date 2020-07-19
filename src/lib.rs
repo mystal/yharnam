@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
 
 pub mod yarn {
@@ -44,6 +46,7 @@ impl YarnOption {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum StackValue {
     StringValue(String),
     BoolValue(bool),
@@ -99,7 +102,7 @@ impl VmState {
 
 pub struct VirtualMachine {
     pub state: VmState,
-    // TODO: Callbacks
+    pub variable_storage: HashMap<String, StackValue>,
 
     pub execution_state: ExecutionState,
 
@@ -112,6 +115,7 @@ impl VirtualMachine {
     pub fn new(program: yarn::Program, string_table: Vec<Record>) -> Self {
         Self {
             state: VmState::new(),
+            variable_storage: HashMap::new(),
             execution_state: ExecutionState::Stopped,
             program,
             string_table,
@@ -405,8 +409,28 @@ impl VirtualMachine {
                 self.state.stack.pop();
             }
             OpCode::CallFunc => unimplemented!(),
-            OpCode::PushVariable => unimplemented!(),
-            OpCode::StoreVariable => unimplemented!(),
+            OpCode::PushVariable => {
+                if let Some(Value::StringValue(var_name)) = &instruction.operands[0].value {
+                    if let Some(val) = self.variable_storage.get(var_name) {
+                        self.state.stack.push(val.clone());
+                    } else {
+                        // TODO: Error.
+                    }
+                } else {
+                    // TODO: Error.
+                }
+            }
+            OpCode::StoreVariable => {
+                if let Some(Value::StringValue(var_name)) = &instruction.operands[0].value {
+                    if let Some(val) = self.state.stack.last() {
+                        self.variable_storage.insert(var_name.clone(), val.clone());
+                    } else {
+                        // TODO: Error.
+                    }
+                } else {
+                    // TODO: Error.
+                }
+            }
             OpCode::Stop => {
                 self.node_complete_handler(&self.state.current_node_name);
                 self.dialogue_complete_handler();
