@@ -53,18 +53,46 @@ impl YarnOption {
     }
 }
 
-pub type LibraryFunction = dyn Fn(&[YarnValue]) -> YarnValue;
+pub type ReturningFunction = dyn Fn(&[YarnValue]) -> YarnValue;
+pub type Function = dyn Fn(&[YarnValue]);
+
+pub enum YarnFunction {
+    Void(&'static Function),
+    Returning(&'static ReturningFunction),
+}
+
+impl YarnFunction {
+    pub fn call(&self, params: &[YarnValue]) -> Option<YarnValue> {
+        match self {
+            Self::Void(func) => {
+                (func)(params);
+                None
+            }
+            Self::Returning(func) => {
+                let result = (func)(params);
+                Some(result)
+            }
+        }
+    }
+}
 
 pub struct FunctionInfo {
     param_count: i8,
-    func: &'static LibraryFunction,
+    func: YarnFunction,
 }
 
 impl FunctionInfo {
-    pub fn new(param_count: i8, func: &'static LibraryFunction) -> Self {
+    pub fn new(param_count: i8, func: &'static Function) -> Self {
         Self {
             param_count,
-            func,
+            func: YarnFunction::Void(func),
+        }
+    }
+
+    pub fn new_returning(param_count: i8, func: &'static ReturningFunction) -> Self {
+        Self {
+            param_count,
+            func: YarnFunction::Returning(func),
         }
     }
 }
@@ -113,112 +141,112 @@ impl VirtualMachine {
         let mut library = HashMap::new();
         library.insert(
             "Add".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 parameters[0].add(&parameters[1]).unwrap()
             }),
         );
 
         library.insert(
             "Minus".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 parameters[0].sub(&parameters[1]).unwrap()
             }),
         );
 
         library.insert(
             "UnaryMinus".to_string(),
-            FunctionInfo::new(1, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(1, &|parameters: &[YarnValue]| {
                 parameters[0].neg()
             }),
         );
 
         library.insert(
             "Divide".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 parameters[0].div(&parameters[1]).unwrap()
             }),
         );
 
         library.insert(
             "Multiply".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 parameters[0].mul(&parameters[1]).unwrap()
             }),
         );
 
         library.insert(
             "Modulo".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 parameters[0].rem(&parameters[1]).unwrap()
             }),
         );
 
         library.insert(
             "EqualTo".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0] == parameters[1]).into()
             }),
         );
 
         library.insert(
             "NotEqualTo".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0] != parameters[1]).into()
             }),
         );
 
         library.insert(
             "GreaterThan".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0] > parameters[1]).into()
             }),
         );
 
         library.insert(
             "GreaterThanOrEqualTo".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0] >= parameters[1]).into()
             }),
         );
 
         library.insert(
             "LessThan".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0] < parameters[1]).into()
             }),
         );
 
         library.insert(
             "LessThanOrEqualTo".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0] <= parameters[1]).into()
             }),
         );
 
         library.insert(
             "And".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0].as_bool() && parameters[1].as_bool()).into()
             }),
         );
 
         library.insert(
             "Or".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0].as_bool() || parameters[1].as_bool()).into()
             }),
         );
 
         library.insert(
             "Xor".to_string(),
-            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(2, &|parameters: &[YarnValue]| {
                 (parameters[0].as_bool() ^ parameters[1].as_bool()).into()
             }),
         );
 
         library.insert(
             "Not".to_string(),
-            FunctionInfo::new(1, &|parameters: &[YarnValue]| {
+            FunctionInfo::new_returning(1, &|parameters: &[YarnValue]| {
                 (!parameters[0].as_bool()).into()
             }),
         );
@@ -250,6 +278,9 @@ impl VirtualMachine {
         self.state.current_node_name = node_name.to_string();
 
         self.node_start_handler(&node_name);
+
+        // TODO: Do we wanna do this?
+        self.execution_state = ExecutionState::Suspended;
 
         true
     }
@@ -565,7 +596,7 @@ impl VirtualMachine {
                         }
 
                         let result = if actual_param_count == 0 {
-                            (function.func)(&[])
+                            function.func.call(&[])
                         } else {
                             // Get the parameters, which were pushed in reverse
                             let mut parameters = vec![YarnValue::Null; actual_param_count as usize];
@@ -574,11 +605,13 @@ impl VirtualMachine {
                                 parameters[i] = value;
                             }
 
-                            (function.func)(&parameters)
+                            function.func.call(&parameters)
                         };
 
-                        // If the function returns a value, push it
-                        self.state.stack.push(result);
+                        if let Some(result) = result {
+                            // If the function returns a value, push it.
+                            self.state.stack.push(result);
+                        }
                     } else {
                         // TODO: Error.
                     }
