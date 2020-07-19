@@ -2,9 +2,16 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
-pub mod yarn {
+pub use crate::{
+    yarn_proto::Program,
+    value::YarnValue,
+};
+
+pub mod yarn_proto {
     include!(concat!(env!("OUT_DIR"), "/yarn.rs"));
 }
+
+mod value;
 
 #[derive(Debug, Deserialize)]
 pub struct Record {
@@ -46,29 +53,18 @@ impl YarnOption {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum StackValue {
-    StringValue(String),
-    BoolValue(bool),
-    FloatValue(f32),
-    NullValue,
+pub type LibraryFunction = dyn Fn(&[YarnValue]) -> YarnValue;
+
+pub struct FunctionInfo {
+    param_count: i8,
+    func: &'static LibraryFunction,
 }
 
-impl StackValue {
-    pub fn as_bool(&self) -> bool {
-        match self {
-            Self::StringValue(val) => {
-                !val.is_empty()
-            }
-            Self::BoolValue(val) => {
-                *val
-            }
-            Self::FloatValue(val) => {
-                !val.is_nan() && *val != 0.0
-            }
-            Self::NullValue => {
-                false
-            }
+impl FunctionInfo {
+    pub fn new(param_count: i8, func: &'static LibraryFunction) -> Self {
+        Self {
+            param_count,
+            func,
         }
     }
 }
@@ -86,7 +82,7 @@ pub struct VmState {
     // TODO: Switch back to usize soon.
     pub program_counter: isize,
     pub current_options: Vec<(Line, String)>,
-    pub stack: Vec<StackValue>,
+    pub stack: Vec<YarnValue>,
 }
 
 impl VmState {
@@ -102,20 +98,135 @@ impl VmState {
 
 pub struct VirtualMachine {
     pub state: VmState,
-    pub variable_storage: HashMap<String, StackValue>,
+    pub variable_storage: HashMap<String, YarnValue>,
+    pub library: HashMap<String, FunctionInfo>,
 
     pub execution_state: ExecutionState,
 
-    pub program: yarn::Program,
+    pub program: Program,
     // TODO: string_table should live in the client.
     pub string_table: Vec<Record>,
 }
 
 impl VirtualMachine {
-    pub fn new(program: yarn::Program, string_table: Vec<Record>) -> Self {
+    pub fn new(program: Program, string_table: Vec<Record>) -> Self {
+        let mut library = HashMap::new();
+        library.insert(
+            "Add".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                parameters[0].add(&parameters[1]).unwrap()
+            }),
+        );
+
+        library.insert(
+            "Minus".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                parameters[0].sub(&parameters[1]).unwrap()
+            }),
+        );
+
+        library.insert(
+            "UnaryMinus".to_string(),
+            FunctionInfo::new(1, &|parameters: &[YarnValue]| {
+                parameters[0].neg()
+            }),
+        );
+
+        library.insert(
+            "Divide".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                parameters[0].div(&parameters[1]).unwrap()
+            }),
+        );
+
+        library.insert(
+            "Multiply".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                parameters[0].mul(&parameters[1]).unwrap()
+            }),
+        );
+
+        library.insert(
+            "Modulo".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                parameters[0].rem(&parameters[1]).unwrap()
+            }),
+        );
+
+        library.insert(
+            "EqualTo".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0] == parameters[1]).into()
+            }),
+        );
+
+        library.insert(
+            "NotEqualTo".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0] != parameters[1]).into()
+            }),
+        );
+
+        library.insert(
+            "GreaterThan".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0] > parameters[1]).into()
+            }),
+        );
+
+        library.insert(
+            "GreaterThanOrEqualTo".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0] >= parameters[1]).into()
+            }),
+        );
+
+        library.insert(
+            "LessThan".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0] < parameters[1]).into()
+            }),
+        );
+
+        library.insert(
+            "LessThanOrEqualTo".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0] <= parameters[1]).into()
+            }),
+        );
+
+        library.insert(
+            "And".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0].as_bool() && parameters[1].as_bool()).into()
+            }),
+        );
+
+        library.insert(
+            "Or".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0].as_bool() || parameters[1].as_bool()).into()
+            }),
+        );
+
+        library.insert(
+            "Xor".to_string(),
+            FunctionInfo::new(2, &|parameters: &[YarnValue]| {
+                (parameters[0].as_bool() ^ parameters[1].as_bool()).into()
+            }),
+        );
+
+        library.insert(
+            "Not".to_string(),
+            FunctionInfo::new(1, &|parameters: &[YarnValue]| {
+                (!parameters[0].as_bool()).into()
+            }),
+        );
+
         Self {
             state: VmState::new(),
             variable_storage: HashMap::new(),
+            library,
             execution_state: ExecutionState::Stopped,
             program,
             string_table,
@@ -232,7 +343,7 @@ impl VirtualMachine {
         // We now know what number option was selected; push the
         // corresponding node name to the stack
         let destination_node = self.state.current_options[selected_option_id].1.clone();
-        self.state.stack.push(StackValue::StringValue(destination_node));
+        self.state.stack.push(YarnValue::Str(destination_node));
 
         // We no longer need the accumulated list of options; clear it
         // so that it's ready for the next one
@@ -243,8 +354,8 @@ impl VirtualMachine {
         self.execution_state = ExecutionState::Suspended;
     }
 
-    fn run_instruction(&mut self, instruction: yarn::Instruction) {
-        use yarn::{
+    fn run_instruction(&mut self, instruction: yarn_proto::Instruction) {
+        use yarn_proto::{
             instruction::OpCode,
             operand::Value,
         };
@@ -260,7 +371,7 @@ impl VirtualMachine {
                 }
             }
             OpCode::Jump => {
-                if let Some(StackValue::StringValue(label)) = self.state.stack.last() {
+                if let Some(YarnValue::Str(label)) = self.state.stack.last() {
                     self.state.program_counter = self.find_instruction_point_for_label(label) - 1;
                 } else {
                     // TODO: Error.
@@ -301,6 +412,7 @@ impl VirtualMachine {
             OpCode::RunCommand => {
                 // Passes a string to the client as a custom command
                 if let Some(Value::StringValue(command)) = &instruction.operands[0].value {
+                    // TODO: Implement substitutions.
                     // The second operand, if provided (compilers prior
                     // to v1.1 don't include it), indicates the number
                     // of expressions in the command. We need to pop
@@ -387,27 +499,27 @@ impl VirtualMachine {
             }
             OpCode::PushString => {
                 if let Some(Value::StringValue(val)) = &instruction.operands[0].value {
-                    self.state.stack.push(StackValue::StringValue(val.clone()));
+                    self.state.stack.push(YarnValue::Str(val.clone()));
                 } else {
                     // TODO: Error: bad operand.
                 }
             }
             OpCode::PushFloat => {
                 if let Some(Value::FloatValue(val)) = &instruction.operands[0].value {
-                    self.state.stack.push(StackValue::FloatValue(*val));
+                    self.state.stack.push(YarnValue::Number(*val));
                 } else {
                     // TODO: Error: bad operand.
                 }
             }
             OpCode::PushBool => {
                 if let Some(Value::BoolValue(val)) = &instruction.operands[0].value {
-                    self.state.stack.push(StackValue::BoolValue(*val));
+                    self.state.stack.push(YarnValue::Bool(*val));
                 } else {
                     // TODO: Error: bad operand.
                 }
             }
             OpCode::PushNull => {
-                self.state.stack.push(StackValue::NullValue);
+                self.state.stack.push(YarnValue::Null);
             },
             OpCode::JumpIfFalse => {
                 // Jump to a named label if the value on the top of the stack
@@ -427,7 +539,53 @@ impl VirtualMachine {
             OpCode::Pop => {
                 self.state.stack.pop();
             }
-            OpCode::CallFunc => unimplemented!(),
+            OpCode::CallFunc => {
+                // Call a function, whose parameters are expected to
+                // be on the stack. Pushes the function's return value,
+                // if it returns one.
+                if let Some(Value::StringValue(func_name)) = &instruction.operands[0].value {
+                    if let Some(function) = self.library.get(func_name) {
+                        let mut expected_param_count = function.param_count;
+                        let actual_param_count = self.state.stack.pop().unwrap().as_number() as i8;
+
+                        // If a function indicates -1 parameters, it takes as
+                        // many parameters as it was given (i.e. it's a
+                        // variadic function)
+                        if expected_param_count == -1 {
+                            expected_param_count = actual_param_count;
+                        }
+
+                        if expected_param_count != actual_param_count {
+                            panic!(
+                                "Function {} expected {}, but received {}",
+                                func_name,
+                                expected_param_count,
+                                actual_param_count,
+                            );
+                        }
+
+                        let result = if actual_param_count == 0 {
+                            (function.func)(&[])
+                        } else {
+                            // Get the parameters, which were pushed in reverse
+                            let mut parameters = vec![YarnValue::Null; actual_param_count as usize];
+                            for i in (0..actual_param_count as usize).rev() {
+                                let value = self.state.stack.pop().unwrap();
+                                parameters[i] = value;
+                            }
+
+                            (function.func)(&parameters)
+                        };
+
+                        // If the function returns a value, push it
+                        self.state.stack.push(result);
+                    } else {
+                        // TODO: Error.
+                    }
+                } else {
+                    // TODO: Error.
+                }
+            }
             OpCode::PushVariable => {
                 if let Some(Value::StringValue(var_name)) = &instruction.operands[0].value {
                     if let Some(val) = self.variable_storage.get(var_name) {
@@ -457,7 +615,7 @@ impl VirtualMachine {
                 self.state = VmState::new();
             }
             OpCode::RunNode => {
-                if let Some(StackValue::StringValue(node_name)) = self.state.stack.pop() {
+                if let Some(YarnValue::Str(node_name)) = self.state.stack.pop() {
                     let pause = self.node_complete_handler(&self.state.current_node_name);
 
                     self.set_node(&node_name);

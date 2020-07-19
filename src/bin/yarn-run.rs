@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Read the file's bytes and load a Program.
     let proto_data = fs::read(&proto_path)?;
-    let program = yarn::Program::decode(&mut Cursor::new(&proto_data))?;
+    let program = Program::decode(&mut Cursor::new(&proto_data))?;
     // println!("{:#?}", &program);
 
     // Load Records from a csv file.
