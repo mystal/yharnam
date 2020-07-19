@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use prost::Message;
 
-use yarn_runner::*;
+use yharnam::*;
 
 const DEFAULT_START_NODE_NAME: &str = "shop";
 // const DEFAULT_START_NODE_NAME: &str = "Start";

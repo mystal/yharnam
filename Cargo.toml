@@ -1,5 +1,5 @@
 [package]
-name = "yarn-runner"
+name = "yharnam"
 version = "0.1.0"
 authors = ["Gabriel Martinez <reitaka@gmail.com>"]
 edition = "2018"
