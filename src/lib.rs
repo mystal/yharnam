@@ -278,11 +278,6 @@ impl VirtualMachine {
                     // values off the stack and deliver them to the
                     // line handler.
                     // if instruction.operands.len() > 1 {
-                    //     // TODO: we only have float operands, which is
-                    //     // unpleasant. we should make 'int' operands a
-                    //     // valid type, but doing that implies that the
-                    //     // language differentiates between floats and
-                    //     // ints itself. something to think about.
                     //     let expressionCount = (int)i.Operands[1].FloatValue;
 
                     //     let strings = new string[expressionCount];
@@ -303,17 +298,41 @@ impl VirtualMachine {
                     // TODO: Handle this error!
                 }
             }
-            OpCode::RunCommand => unimplemented!(),
+            OpCode::RunCommand => {
+                // Passes a string to the client as a custom command
+                if let Some(Value::StringValue(command)) = &instruction.operands[0].value {
+                    // The second operand, if provided (compilers prior
+                    // to v1.1 don't include it), indicates the number
+                    // of expressions in the command. We need to pop
+                    // these values off the stack and deliver them to
+                    // the line handler.
+                    // if (i.Operands.Count > 1) {
+                    //     var expressionCount = (int)i.Operands[1].FloatValue;
+
+                    //     var strings = new string[expressionCount];
+
+                    //     // Get the values from the stack, and
+                    //     // substitute them into the command text
+                    //     for (int expressionIndex = expressionCount - 1; expressionIndex >= 0; expressionIndex--) {
+                    //         var substitution = state.PopValue().AsString;
+
+                    //         commandText = commandText.Replace("{" + expressionIndex + "}", substitution);
+                    //     }
+                    // }
+
+                    let pause = self.command_handler(command);
+
+                    if pause {
+                        self.execution_state = ExecutionState::Suspended;
+                    }
+                } else {
+                    // TODO: Error.
+                }
+            }
             OpCode::AddOption => {
                 let line = if let Some(Value::StringValue(opt)) = instruction.operands.get(0).and_then(|o| o.value.as_ref()) {
                     // TODO: Implement substitutions.
                     // if instruction.operands.len() > 2 {
-                    //     // TODO: we only have float operands, which is
-                    //     // unpleasant. we should make 'int' operands a
-                    //     // valid type, but doing that implies that the
-                    //     // language differentiates between floats and
-                    //     // ints itself. something to think about.
-
                     //     // get the number of expressions that we're
                     //     // working with out of the third operand
                     //     var expressionCount = (int)i.Operands[2].FloatValue;
@@ -495,7 +514,8 @@ impl VirtualMachine {
         }
     }
 
-    fn command_handler(&self/*, command: Command*/) -> bool {
+    fn command_handler(&self, command: &str) -> bool {
+        println!("== Command: {} ==", command);
         false
     }
 
