@@ -51,6 +51,25 @@ pub enum StackValue {
     NullValue,
 }
 
+impl StackValue {
+    pub fn as_bool(&self) -> bool {
+        match self {
+            Self::StringValue(val) => {
+                !val.is_empty()
+            }
+            Self::BoolValue(val) => {
+                *val
+            }
+            Self::FloatValue(val) => {
+                !val.is_nan() && *val != 0.0
+            }
+            Self::NullValue => {
+                false
+            }
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ExecutionState {
     Stopped,
@@ -85,6 +104,7 @@ pub struct VirtualMachine {
     pub execution_state: ExecutionState,
 
     pub program: yarn::Program,
+    // TODO: string_table should live in the client.
     pub string_table: Vec<Record>,
 }
 
@@ -119,6 +139,8 @@ impl VirtualMachine {
         true
     }
 
+    // TODO: Return the reason why we stopped execution.
+    // Either Line, Options, Command, NodeStart?, NodeEnd?, DialogeEnd
     pub fn continue_dialogue(&mut self) {
         // TODO: Handle error cases.
         // if (currentNode == null)
@@ -226,8 +248,20 @@ impl VirtualMachine {
         let opcode = OpCode::from_i32(instruction.opcode)
             .unwrap();
         match opcode {
-            OpCode::JumpTo => unimplemented!(),
-            OpCode::Jump => unimplemented!(),
+            OpCode::JumpTo => {
+                if let Some(Value::StringValue(label)) = &instruction.operands[0].value {
+                    self.state.program_counter = self.find_instruction_point_for_label(label) - 1;
+                } else {
+                    // TODO: Error.
+                }
+            }
+            OpCode::Jump => {
+                if let Some(StackValue::StringValue(label)) = self.state.stack.last() {
+                    self.state.program_counter = self.find_instruction_point_for_label(label) - 1;
+                } else {
+                    // TODO: Error.
+                }
+            }
             OpCode::RunLine => {
                 // Looks up a string from the string table and passes it to the client as a line.
                 if let Some(Value::StringValue(string_key)) = &instruction.operands[0].value {
@@ -328,14 +362,48 @@ impl VirtualMachine {
                 // user has made a selection
                 self.options_handler(options);
             }
-            OpCode::PushString => unimplemented!(),
-            OpCode::PushFloat => unimplemented!(),
-            OpCode::PushBool => unimplemented!(),
+            OpCode::PushString => {
+                if let Some(Value::StringValue(val)) = &instruction.operands[0].value {
+                    self.state.stack.push(StackValue::StringValue(val.clone()));
+                } else {
+                    // TODO: Error: bad operand.
+                }
+            }
+            OpCode::PushFloat => {
+                if let Some(Value::FloatValue(val)) = &instruction.operands[0].value {
+                    self.state.stack.push(StackValue::FloatValue(*val));
+                } else {
+                    // TODO: Error: bad operand.
+                }
+            }
+            OpCode::PushBool => {
+                if let Some(Value::BoolValue(val)) = &instruction.operands[0].value {
+                    self.state.stack.push(StackValue::BoolValue(*val));
+                } else {
+                    // TODO: Error: bad operand.
+                }
+            }
             OpCode::PushNull => {
                 self.state.stack.push(StackValue::NullValue);
             },
-            OpCode::JumpIfFalse => unimplemented!(),
-            OpCode::Pop => unimplemented!(),
+            OpCode::JumpIfFalse => {
+                // Jump to a named label if the value on the top of the stack
+                // evaluates to the boolean value 'false'.
+                if let Some(val) = self.state.stack.last() {
+                    if !val.as_bool() {
+                        if let Some(Value::StringValue(label)) = &instruction.operands[0].value {
+                            self.state.program_counter = self.find_instruction_point_for_label(label) - 1;
+                        } else {
+                            // TODO: Error.
+                        }
+                    }
+                } else {
+                    // TODO: Error.
+                }
+            }
+            OpCode::Pop => {
+                self.state.stack.pop();
+            }
             OpCode::CallFunc => unimplemented!(),
             OpCode::PushVariable => unimplemented!(),
             OpCode::StoreVariable => unimplemented!(),
@@ -351,7 +419,6 @@ impl VirtualMachine {
 
                     self.set_node(&node_name);
 
-                    // TODO: Have to do this!
                     // Decrement program counter here, because it will
                     // be incremented when this function returns, and
                     // would mean skipping the first instruction
@@ -364,6 +431,16 @@ impl VirtualMachine {
                     // TODO: Error!
                 }
             }
+        }
+    }
+
+    fn find_instruction_point_for_label(&self, label: &str) -> isize {
+        let instruction_point = self.program.nodes.get(&self.state.current_node_name)
+            .and_then(|node| node.labels.get(label));
+        if let Some(&instruction_point) = instruction_point {
+            instruction_point as isize
+        } else {
+            panic!("Unknown label {} in node {}", label, self.state.current_node_name);
         }
     }
 
@@ -381,7 +458,7 @@ impl VirtualMachine {
     }
 
     fn options_handler(&self, options: Vec<YarnOption>) {
-        println!("Choose option:");
+        println!("== Choose option ==");
         for (i, opt) in options.iter().enumerate() {
             let text = self.string_table.iter()
                 .find(|record| record.id == opt.line.id)
@@ -399,16 +476,16 @@ impl VirtualMachine {
     }
 
     fn node_start_handler(&self, node_name: &str) -> bool {
-        println!("Starting node: {}", node_name);
+        println!("== Starting node: {} ==", node_name);
         false
     }
 
     fn node_complete_handler(&self, node_name: &str) -> bool {
-        println!("Completed node: {}", node_name);
+        println!("== Completed node: {} ==", node_name);
         false
     }
 
     fn dialogue_complete_handler(&self) {
-        println!("Dialogue complete");
+        println!("== Dialogue complete ==");
     }
 }
