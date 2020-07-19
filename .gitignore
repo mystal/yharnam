@@ -1,2 +1,5 @@
 /target
 Cargo.lock
+
+test_files/*.csv
+test_files/*.yarnc
