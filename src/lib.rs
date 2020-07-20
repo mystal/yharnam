@@ -301,9 +301,7 @@ impl VirtualMachine {
         self.state = VmState::new();
         self.state.current_node_name = node_name.to_string();
 
-        //self.node_start_handler(&node_name);
-
-        // TODO: Do we wanna do this?
+        // TODO: Suspending makes sense to me, but is it correct?
         self.execution_state = ExecutionState::Suspended;
 
         true
@@ -321,31 +319,6 @@ impl VirtualMachine {
         if self.execution_state == ExecutionState::WaitingOnOptionSelection {
             panic!("Cannot continue running dialogue. Still waiting on option selection.");
         }
-
-        // if (lineHandler == null)
-        // {
-        //     throw new DialogueException($"Cannot continue running dialogue. {nameof(lineHandler)} has not been set.");
-        // }
-
-        // if (optionsHandler == null)
-        // {
-        //     throw new DialogueException($"Cannot continue running dialogue. {nameof(optionsHandler)} has not been set.");
-        // }
-
-        // if (commandHandler == null)
-        // {
-        //     throw new DialogueException($"Cannot continue running dialogue. {nameof(commandHandler)} has not been set.");
-        // }
-
-        // if (nodeCompleteHandler == null)
-        // {
-        //     throw new DialogueException($"Cannot continue running dialogue. {nameof(nodeCompleteHandler)} has not been set.");
-        // }
-
-        // if (nodeCompleteHandler == null)
-        // {
-        //     throw new DialogueException($"Cannot continue running dialogue. {nameof(nodeCompleteHandler)} has not been set.");
-        // }
 
         self.execution_state = ExecutionState::Running;
 
@@ -679,7 +652,6 @@ impl VirtualMachine {
                     // would mean skipping the first instruction
                     self.state.program_counter -= 1;
 
-                    //let pause = self.node_complete_handler(&self.state.current_node_name);
                     self.execution_state = ExecutionState::Suspended;
 
                     return Some(SuspendReason::NodeChange {
