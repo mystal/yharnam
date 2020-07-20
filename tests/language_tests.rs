@@ -7,6 +7,8 @@ use prost::Message;
 use yharnam::*;
 
 fn set_up_vm(yarnc_path: &str) -> VirtualMachine {
+    let _ = pretty_env_logger::try_init();
+
     let proto_path = PathBuf::from(yarnc_path);
 
     // Read the file's bytes and load a Program.

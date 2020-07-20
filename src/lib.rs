@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use log::*;
 use serde::Deserialize;
 
 pub use crate::{
@@ -383,6 +384,8 @@ impl VirtualMachine {
         // We're no longer in the WaitingForOptions state; we are now
         // instead Suspended
         self.execution_state = ExecutionState::Suspended;
+
+        debug!("Selected option: {}", selected_option_id);
     }
 
     fn run_instruction(&mut self, instruction: yarn_proto::Instruction) {
@@ -393,6 +396,9 @@ impl VirtualMachine {
 
         let opcode = OpCode::from_i32(instruction.opcode)
             .unwrap();
+
+        debug!("Running {:?} {:?}", opcode, instruction.operands);
+
         match opcode {
             OpCode::JumpTo => {
                 if let Some(Value::StringValue(label)) = &instruction.operands[0].value {
@@ -624,7 +630,8 @@ impl VirtualMachine {
                     if let Some(val) = self.variable_storage.get(var_name) {
                         self.state.stack.push(val.clone());
                     } else {
-                        // TODO: Error.
+                        // Value is undefined, so push null.
+                        self.state.stack.push(YarnValue::Null);
                     }
                 } else {
                     // TODO: Error.
