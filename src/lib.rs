@@ -77,22 +77,37 @@ impl YarnFunction {
     }
 }
 
+enum ParamCount {
+    N(u8),
+    Variadic,
+}
+
+impl From<i8> for ParamCount {
+    fn from(val: i8) -> Self {
+        if val >= 0 {
+            Self::N(val as u8)
+        } else {
+            Self::Variadic
+        }
+    }
+}
+
 pub struct FunctionInfo {
-    param_count: i8,
+    param_count: ParamCount,
     func: YarnFunction,
 }
 
 impl FunctionInfo {
     pub fn new(param_count: i8, func: &'static Function) -> Self {
         Self {
-            param_count,
+            param_count: param_count.into(),
             func: YarnFunction::Void(func),
         }
     }
 
     pub fn new_returning(param_count: i8, func: &'static ReturningFunction) -> Self {
         Self {
-            param_count,
+            param_count: param_count.into(),
             func: YarnFunction::Returning(func),
         }
     }
@@ -582,15 +597,13 @@ impl VirtualMachine {
                 // if it returns one.
                 if let Some(Value::StringValue(func_name)) = &instruction.operands[0].value {
                     if let Some(function) = self.library.get(func_name) {
-                        let mut expected_param_count = function.param_count;
-                        let actual_param_count = self.state.stack.pop().unwrap().as_number() as i8;
+                        let actual_param_count = self.state.stack.pop().unwrap().as_number() as u8;
 
-                        // If a function indicates -1 parameters, it takes as
-                        // many parameters as it was given (i.e. it's a
-                        // variadic function)
-                        if expected_param_count == -1 {
-                            expected_param_count = actual_param_count;
-                        }
+                        // If a function is variadic, it takes as many parameters as it was given.
+                        let expected_param_count = match function.param_count {
+                            ParamCount::N(n) => n,
+                            ParamCount::Variadic => actual_param_count,
+                        };
 
                         if expected_param_count != actual_param_count {
                             panic!(
