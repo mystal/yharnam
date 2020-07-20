@@ -121,6 +121,17 @@ pub enum ExecutionState {
     Running,
 }
 
+pub enum SuspendReason {
+    Line(Line),
+    Options(Vec<YarnOption>),
+    Command(String),
+    NodeChange {
+        start: String,
+        end: String,
+    },
+    DialogueComplete(String),
+}
+
 pub struct VmState {
     pub current_node_name: String,
     // TODO: Switch back to usize soon.
@@ -148,12 +159,10 @@ pub struct VirtualMachine {
     pub execution_state: ExecutionState,
 
     pub program: Program,
-    // TODO: string_table should live in the client.
-    pub string_table: Vec<Record>,
 }
 
 impl VirtualMachine {
-    pub fn new(program: Program, string_table: Vec<Record>) -> Self {
+    pub fn new(program: Program) -> Self {
         let mut library = HashMap::new();
         library.insert(
             "Add".to_string(),
@@ -273,7 +282,6 @@ impl VirtualMachine {
             library,
             execution_state: ExecutionState::Stopped,
             program,
-            string_table,
         }
     }
 
@@ -293,7 +301,7 @@ impl VirtualMachine {
         self.state = VmState::new();
         self.state.current_node_name = node_name.to_string();
 
-        self.node_start_handler(&node_name);
+        //self.node_start_handler(&node_name);
 
         // TODO: Do we wanna do this?
         self.execution_state = ExecutionState::Suspended;
@@ -303,7 +311,7 @@ impl VirtualMachine {
 
     // TODO: Return the reason why we stopped execution.
     // Either Line, Options, Command, NodeStart?, NodeEnd?, DialogeEnd
-    pub fn continue_dialogue(&mut self) {
+    pub fn continue_dialogue(&mut self) -> SuspendReason {
         // TODO: Handle error cases.
         // if (currentNode == null)
         // {
@@ -342,33 +350,34 @@ impl VirtualMachine {
         self.execution_state = ExecutionState::Running;
 
         // Execute instructions until something forces us to stop
-        while let ExecutionState::Running = self.execution_state {
+        loop {
+            let instruction_count = if !self.state.current_node_name.is_empty() {
+                self.program.nodes[&self.state.current_node_name].instructions.len()
+            } else {
+                // No node is running, so return 0.
+                0
+            };
+
+            // If we've reached the end of a node, stop execution.
+            if self.state.program_counter as usize >= instruction_count {
+                let last_node = self.state.current_node_name.clone();
+                self.execution_state = ExecutionState::Stopped;
+                self.state = VmState::new();
+                // dialogue.LogDebugMessage ("Run complete.");
+                return SuspendReason::DialogueComplete(last_node);
+            }
+
             let current_instruction = {
                 let current_node = &self.program.nodes[&self.state.current_node_name];
                 current_node.instructions[self.state.program_counter as usize].clone()
             };
 
-            self.run_instruction(current_instruction);
-
-            // TODO: Make run_instruction return more info about what to do next. i.e., don't
-            // always increment the program counter, for one.
+            let suspend = self.run_instruction(current_instruction);
 
             self.state.program_counter += 1;
 
-            let instruction_count = if !self.state.current_node_name.is_empty() {
-                self.program.nodes[&self.state.current_node_name].instructions.len()
-            } else {
-                0
-            };
-
-            if self.state.program_counter as usize >= instruction_count {
-                self.node_complete_handler(&self.state.current_node_name);
-
-                self.execution_state = ExecutionState::Stopped;
-                self.state = VmState::new();
-
-                self.dialogue_complete_handler();
-                // dialogue.LogDebugMessage ("Run complete.");
+            if let Some(suspend) = suspend {
+                return suspend;
             }
         }
     }
@@ -403,7 +412,7 @@ impl VirtualMachine {
         debug!("Selected option: {}", selected_option_id);
     }
 
-    fn run_instruction(&mut self, instruction: yarn_proto::Instruction) {
+    fn run_instruction(&mut self, instruction: yarn_proto::Instruction) -> Option<SuspendReason> {
         use yarn_proto::{
             instruction::OpCode,
             operand::Value,
@@ -452,11 +461,8 @@ impl VirtualMachine {
                     //     line.Substitutions = strings;
                     // }
 
-                    let pause = self.line_handler(line);
-
-                    if pause {
-                        self.execution_state = ExecutionState::Suspended;
-                    }
+                    self.execution_state = ExecutionState::Suspended;
+                    return Some(SuspendReason::Line(line));
                 } else {
                     // TODO: Handle this error!
                 }
@@ -484,11 +490,8 @@ impl VirtualMachine {
                     //     }
                     // }
 
-                    let pause = self.command_handler(command);
-
-                    if pause {
-                        self.execution_state = ExecutionState::Suspended;
-                    }
+                    self.execution_state = ExecutionState::Suspended;
+                    return Some(SuspendReason::Command(command.clone()));
                 } else {
                     // TODO: Error.
                 }
@@ -530,9 +533,9 @@ impl VirtualMachine {
                 // If we have no options to show, immediately stop.
                 if self.state.current_options.is_empty() {
                     self.execution_state = ExecutionState::Stopped;
+                    let last_node = self.state.current_node_name.clone();
                     self.state = VmState::new();
-                    self.dialogue_complete_handler();
-                    return;
+                    return Some(SuspendReason::DialogueComplete(last_node));
                 }
 
                 // Present the list of options to the user and let them pick
@@ -545,9 +548,7 @@ impl VirtualMachine {
                 // We can't continue until our client tell us which option to pick.
                 self.execution_state = ExecutionState::WaitingOnOptionSelection;
 
-                // Pass the options set to the client, as well as a delegate for them to call when the
-                // user has made a selection
-                self.options_handler(options);
+                return Some(SuspendReason::Options(options));
             }
             OpCode::PushString => {
                 if let Some(Value::StringValue(val)) = &instruction.operands[0].value {
@@ -662,14 +663,14 @@ impl VirtualMachine {
                 }
             }
             OpCode::Stop => {
-                self.node_complete_handler(&self.state.current_node_name);
-                self.dialogue_complete_handler();
                 self.execution_state = ExecutionState::Stopped;
+                let last_node = self.state.current_node_name.clone();
                 self.state = VmState::new();
+                return Some(SuspendReason::DialogueComplete(last_node));
             }
             OpCode::RunNode => {
                 if let Some(YarnValue::Str(node_name)) = self.state.stack.pop() {
-                    let pause = self.node_complete_handler(&self.state.current_node_name);
+                    let old_node = self.state.current_node_name.clone();
 
                     self.set_node(&node_name);
 
@@ -678,14 +679,20 @@ impl VirtualMachine {
                     // would mean skipping the first instruction
                     self.state.program_counter -= 1;
 
-                    if pause {
-                        self.execution_state = ExecutionState::Suspended;
-                    }
+                    //let pause = self.node_complete_handler(&self.state.current_node_name);
+                    self.execution_state = ExecutionState::Suspended;
+
+                    return Some(SuspendReason::NodeChange {
+                        start: node_name.clone(),
+                        end: old_node,
+                    })
                 } else {
                     // TODO: Error!
                 }
             }
         }
+
+        None
     }
 
     fn find_instruction_point_for_label(&self, label: &str) -> isize {
@@ -696,51 +703,5 @@ impl VirtualMachine {
         } else {
             panic!("Unknown label {} in node {}", label, self.state.current_node_name);
         }
-    }
-
-    fn line_handler(&self, line: Line) -> bool {
-        let text = self.string_table.iter()
-            .find(|record| record.id == line.id)
-            .map(|record| &record.text);
-        if let Some(text) = text {
-            println!("{}", text);
-        } else {
-            // TODO: Could not find line, handle error.
-        }
-
-        false
-    }
-
-    fn options_handler(&self, options: Vec<YarnOption>) {
-        println!("== Choose option ==");
-        for (i, opt) in options.iter().enumerate() {
-            let text = self.string_table.iter()
-                .find(|record| record.id == opt.line.id)
-                .map(|record| &record.text);
-            if let Some(text) = text {
-                println!("{}: {}", i, text);
-            } else {
-                // TODO: Could not find line, handle error.
-            }
-        }
-    }
-
-    fn command_handler(&self, command: &str) -> bool {
-        println!("== Command: {} ==", command);
-        false
-    }
-
-    fn node_start_handler(&self, node_name: &str) -> bool {
-        println!("== Starting node: {} ==", node_name);
-        false
-    }
-
-    fn node_complete_handler(&self, node_name: &str) -> bool {
-        println!("== Completed node: {} ==", node_name);
-        false
-    }
-
-    fn dialogue_complete_handler(&self) {
-        println!("== Dialogue complete ==");
     }
 }

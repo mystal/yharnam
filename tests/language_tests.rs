@@ -26,7 +26,7 @@ fn set_up_vm(yarnc_path: &str) -> VirtualMachine {
         .map(|result| result.unwrap())
         .collect();
 
-    let mut vm = VirtualMachine::new(program, string_table);
+    let mut vm = VirtualMachine::new(program);
     vm.library.insert(
         "assert".to_string(),
         FunctionInfo::new(1, &|parameters: &[YarnValue]| {
