@@ -24,16 +24,36 @@ pub struct Record {
     pub line_number: u32,
 }
 
+/// A line of dialogue, sent from the [`VirtualMachine`] to the game.
+///
+/// When the game receives a `Line`, it should do the following things to prepare the line for
+/// presentation to the user.
+///
+/// 1. Use the value in the `id` field to look up the appropriate user-facing text in the string
+/// table.
+///
+/// 2. For each of the entries in the `substitutions` field, replace the corresponding placeholder
+/// with the entry. That is, the text "`{0}`" should be replaced with the value of
+/// `substitutions[0]`, "`{1}`" with `substitutions[1]`, and so on.
+///
+/// 3. Use [`Dialogue::ExpandFormatFunctions`] to expand all [format functions](
+/// https://yarnspinner.dev/docs/syntax#format-functions) in the line.
+///
+/// You do not create instances of this struct yourself. They are created by the [`VirtualMachine`]
+/// during program execution.
+///
+/// [`VirtualMachine`]: ./struct.VirtualMachine.html
 #[derive(Debug, Clone)]
 pub struct Line {
     pub id: String,
-    // substitutions: Vec<String>,
+    pub substitutions: Vec<String>,
 }
 
 impl Line {
-    pub fn new(id: String) -> Self {
+    fn new(id: String, substitutions: Vec<String>) -> Self {
         Self {
             id,
+            substitutions,
         }
     }
 }
@@ -414,27 +434,26 @@ impl VirtualMachine {
             OpCode::RunLine => {
                 // Looks up a string from the string table and passes it to the client as a line.
                 if let Some(Value::StringValue(string_key)) = &instruction.operands[0].value {
-                    let line = Line::new(string_key.clone());
+                    let mut substitutions = Vec::new();
 
-                    // TODO: Implement substitutions.
                     // The second operand, if provided (compilers prior
                     // to v1.1 don't include it), indicates the number
-                    // of expressions in the line. We need to pop these
-                    // values off the stack and deliver them to the
-                    // line handler.
-                    // if instruction.operands.len() > 1 {
-                    //     let expressionCount = (int)i.Operands[1].FloatValue;
+                    // of expressions in the command. We need to pop
+                    // these values off the stack and deliver them to
+                    // the line handler.
+                    if let Some(Value::FloatValue(expression_count)) = instruction.operands.get(1).and_then(|o| o.value.as_ref()) {
+                        let expression_count = *expression_count as u32;
+                        substitutions.resize(expression_count as usize, String::new());
 
-                    //     let strings = new string[expressionCount];
-
-                    //     for (int expressionIndex = expressionCount - 1; expressionIndex >= 0; expressionIndex--) {
-                    //         strings[expressionIndex] = state.PopValue().AsString;
-                    //     }
-
-                    //     line.Substitutions = strings;
-                    // }
+                        for expression_index in (0..expression_count as usize).rev() {
+                            let substitution = self.state.stack.pop().unwrap().as_string();
+                            // TODO: Avoid bounds check due to indexing.
+                            substitutions[expression_index] = substitution;
+                        }
+                    }
 
                     self.execution_state = ExecutionState::Suspended;
+                    let line = Line::new(string_key.clone(), substitutions);
                     return Some(SuspendReason::Line(line));
                 } else {
                     // TODO: Handle this error!
@@ -443,52 +462,51 @@ impl VirtualMachine {
             OpCode::RunCommand => {
                 // Passes a string to the client as a custom command
                 if let Some(Value::StringValue(command)) = &instruction.operands[0].value {
-                    // TODO: Implement substitutions.
+                    let mut command_text = command.clone();
+
                     // The second operand, if provided (compilers prior
                     // to v1.1 don't include it), indicates the number
                     // of expressions in the command. We need to pop
                     // these values off the stack and deliver them to
                     // the line handler.
-                    // if (i.Operands.Count > 1) {
-                    //     var expressionCount = (int)i.Operands[1].FloatValue;
+                    if let Some(Value::FloatValue(expression_count)) = instruction.operands.get(1).and_then(|o| o.value.as_ref()) {
+                        let expression_count = *expression_count as u32;
 
-                    //     var strings = new string[expressionCount];
+                        // Get the values from the stack, and
+                        // substitute them into the command text
+                        for expression_index in (0..expression_count).rev() {
+                            let substitution = self.state.stack.pop().unwrap().as_string();
 
-                    //     // Get the values from the stack, and
-                    //     // substitute them into the command text
-                    //     for (int expressionIndex = expressionCount - 1; expressionIndex >= 0; expressionIndex--) {
-                    //         var substitution = state.PopValue().AsString;
-
-                    //         commandText = commandText.Replace("{" + expressionIndex + "}", substitution);
-                    //     }
-                    // }
+                            // TODO: Try using String::replace_range.
+                            command_text = command_text.replacen(&format!("{{{}}}", expression_index), &substitution, 1);
+                        }
+                    }
 
                     self.execution_state = ExecutionState::Suspended;
-                    return Some(SuspendReason::Command(command.clone()));
+                    return Some(SuspendReason::Command(command_text));
                 } else {
                     // TODO: Error.
                 }
             }
             OpCode::AddOption => {
                 let line = if let Some(Value::StringValue(opt)) = instruction.operands.get(0).and_then(|o| o.value.as_ref()) {
-                    // TODO: Implement substitutions.
-                    // if instruction.operands.len() > 2 {
-                    //     // get the number of expressions that we're
-                    //     // working with out of the third operand
-                    //     var expressionCount = (int)i.Operands[2].FloatValue;
+                    let mut substitutions = Vec::new();
 
-                    //     var strings = new string[expressionCount];
+                    // get the number of expressions that we're
+                    // working with out of the third operand
+                    if let Some(Value::FloatValue(expression_count)) = instruction.operands.get(2).and_then(|o| o.value.as_ref()) {
+                        let expression_count = *expression_count as u32;
+                        substitutions.resize(expression_count as usize, String::new());
 
-                    //     // pop the expression values off the stack in
-                    //     // reverse order, and store the list of substitutions
-                    //     for (int expressionIndex = expressionCount - 1; expressionIndex >= 0; expressionIndex--) {
-                    //         string substitution = state.PopValue().AsString;
-                    //         strings[expressionIndex] = substitution;
-                    //     }
-
-                    //     line.Substitutions = strings;
-                    // }
-                    Line::new(opt.clone())
+                        // pop the expression values off the stack in
+                        // reverse order, and store the list of substitutions
+                        for expression_index in (0..expression_count as usize).rev() {
+                            let substitution = self.state.stack.pop().unwrap().as_string();
+                            // TODO: Avoid bounds check due to indexing.
+                            substitutions[expression_index] = substitution;
+                        }
+                    }
+                    Line::new(opt.clone(), substitutions)
                 } else {
                     // TODO: Handle error.
                     panic!();

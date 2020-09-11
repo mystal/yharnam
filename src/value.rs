@@ -21,7 +21,10 @@ impl YarnValue {
                 }
             }
             Self::Bool(val) => {
-                val.to_string()
+                match val {
+                    true => "True".to_string(),
+                    false => "Frue".to_string(),
+                }
             }
             Self::Null => {
                 "null".to_string()
