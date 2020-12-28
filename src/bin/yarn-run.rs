@@ -1,7 +1,7 @@
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::io::{self, Cursor};
+use std::io;
 use std::path::PathBuf;
 
 use prost::Message;
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Read the file's bytes and load a Program.
     let proto_data = fs::read(&proto_path)?;
-    let program = Program::decode(&mut Cursor::new(&proto_data))?;
+    let program = Program::decode(&*proto_data)?;
     // println!("{:#?}", &program);
 
     // Load Records from a csv file.

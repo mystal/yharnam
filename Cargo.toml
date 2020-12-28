@@ -9,11 +9,11 @@ edition = "2018"
 [dependencies]
 csv = "1"
 log = "0.4"
-prost = "0.6"
+prost = "0.7"
 serde = { version = "1", features = ["derive"] }
 
 [build-dependencies]
-prost-build = "0.6"
+prost-build = "0.7"
 
 [dev-dependencies]
 pretty_env_logger = "0.4"

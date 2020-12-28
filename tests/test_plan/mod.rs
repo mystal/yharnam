@@ -131,7 +131,7 @@ impl PlanRunner {
         // Read the file's bytes and load a Program.
         let proto_data = fs::read(&proto_path)
             .unwrap();
-        let program = Program::decode(&mut io::Cursor::new(&proto_data))
+        let program = Program::decode(&*proto_data)
             .unwrap();
 
         // Load Records from a csv file.

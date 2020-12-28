@@ -1,5 +1,4 @@
 use std::fs;
-use std::io::Cursor;
 use std::path::PathBuf;
 
 use prost::Message;
@@ -16,7 +15,7 @@ fn set_up_vm(yarnc_path: &str) -> VirtualMachine {
     // Read the file's bytes and load a Program.
     let proto_data = fs::read(&proto_path)
         .unwrap();
-    let program = Program::decode(&mut Cursor::new(&proto_data))
+    let program = Program::decode(&*proto_data)
         .unwrap();
 
     // Load Records from a csv file.
