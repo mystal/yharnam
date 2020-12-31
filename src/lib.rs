@@ -1,3 +1,5 @@
+// #![warn(missing_docs)]
+
 use std::collections::HashMap;
 
 use log::*;
@@ -5,6 +7,7 @@ use serde::Deserialize;
 
 pub use crate::{
     yarn_proto::Program,
+    utils::*,
     value::YarnValue,
 };
 
@@ -12,6 +15,7 @@ pub mod yarn_proto {
     include!(concat!(env!("OUT_DIR"), "/yarn.rs"));
 }
 
+mod utils;
 mod value;
 
 #[derive(Debug, Deserialize)]
@@ -36,7 +40,7 @@ pub struct Record {
 /// with the entry. That is, the text "`{0}`" should be replaced with the value of
 /// `substitutions[0]`, "`{1}`" with `substitutions[1]`, and so on.
 ///
-/// 3. Use [`Dialogue::ExpandFormatFunctions`] to expand all [format functions](
+/// 3. Use [`expand_format_functions`] to expand all [format functions](
 /// https://yarnspinner.dev/docs/syntax#format-functions) in the line.
 ///
 /// You do not create instances of this struct yourself. They are created by the [`VirtualMachine`]

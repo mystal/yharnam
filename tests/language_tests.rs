@@ -69,12 +69,11 @@ fn test_expressions() {
     }
 }
 
-// TODO: Uncomment once ExpandFormatFunctions has been implemented.
-// #[test]
-// fn test_format_functions() {
-//     let mut runner = test_plan::PlanRunner::new("test_files/FormatFunctions.yarn");
-//     runner.run();
-// }
+#[test]
+fn test_format_functions() {
+    let mut runner = test_plan::PlanRunner::new("test_files/FormatFunctions.yarn");
+    runner.run();
+}
 
 #[test]
 fn test_functions() {

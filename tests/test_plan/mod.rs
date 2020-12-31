@@ -120,6 +120,7 @@ pub struct PlanRunner {
     vm: VirtualMachine,
     string_table: Vec<Record>,
     plan: TestPlan,
+    locale: String,
 }
 
 impl PlanRunner {
@@ -161,7 +162,21 @@ impl PlanRunner {
             vm,
             string_table,
             plan,
+            locale: "en".to_string(),
         }
+    }
+
+    fn get_composed_text_for_line(&self, line: &Line) -> String {
+        let mut line_text = self.string_table.iter()
+            .find(|record| record.id == line.id)
+            .map(|record| &record.text)
+            .unwrap()
+            .clone();
+        for (i, substitution) in line.substitutions.iter().enumerate() {
+            line_text = line_text.replacen(&format!("{{{}}}", i), &substitution, 1);
+        }
+
+        yharnam::expand_format_functions(&line_text, &self.locale)
     }
 
     pub fn run(&mut self) {
@@ -172,29 +187,15 @@ impl PlanRunner {
                     // Assert that the test plan expects this line.
                     self.plan.next();
                     let plan_step = self.plan.get_current_step().unwrap();
-                    let mut line_text = self.string_table.iter()
-                        .find(|record| record.id == line.id)
-                        .map(|record| &record.text)
-                        .unwrap()
-                        .clone();
-                    for (i, substitution) in line.substitutions.iter().enumerate() {
-                        line_text = line_text.replacen(&format!("{{{}}}", i), &substitution, 1);
-                    }
-                    assert!(matches!(plan_step, PlanStep::Line(plan_text) if *plan_text == line_text), "Expected the line \"{}\", got {:?}", line_text, plan_step);
+                    let line_text = self.get_composed_text_for_line(&line);
+                    assert!(matches!(plan_step, PlanStep::Line(plan_text) if *plan_text == line_text), "[{}] Expected the line {:?}, got \"{}\"", self.plan.next_step_index, plan_step, line_text);
                 }
                 SuspendReason::Options(options) => {
                     // Assert that the test plan expects these options.
                     self.plan.next();
                     let plan_step = self.plan.get_current_step().unwrap();
                     for (option, plan_option) in options.into_iter().zip(&self.plan.options) {
-                        let mut option_text = self.string_table.iter()
-                            .find(|record| record.id == option.line.id)
-                            .map(|record| &record.text)
-                            .unwrap()
-                            .clone();
-                        for (i, substitution) in option.line.substitutions.iter().enumerate() {
-                            option_text = option_text.replacen(&format!("{{{}}}", i), &substitution, 1);
-                        }
+                        let option_text = self.get_composed_text_for_line(&option.line);
                         assert_eq!(option_text, *plan_option);
                     }
                     match plan_step {
@@ -206,7 +207,7 @@ impl PlanRunner {
                     // Assert that the test plan expects this command.
                     self.plan.next();
                     let plan_step = self.plan.get_current_step().unwrap();
-                    assert!(matches!(plan_step, PlanStep::Command(plan_text) if *plan_text == command), "Expected the command \"{}\", got {:?}", command, plan_step);
+                    assert!(matches!(plan_step, PlanStep::Command(plan_text) if *plan_text == command), "Expected the command {:?}, got \"{}\"", plan_step, command);
                 }
                 SuspendReason::NodeChange { .. } => {}
                 SuspendReason::DialogueComplete(_) => {

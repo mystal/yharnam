@@ -8,9 +8,11 @@ edition = "2018"
 
 [dependencies]
 csv = "1"
+intl_pluralrules = "7"
 log = "0.4"
 prost = "0.7"
 serde = { version = "1", features = ["derive"] }
+unic-langid = "0.9"
 
 [build-dependencies]
 prost-build = "0.7"
