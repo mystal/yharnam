@@ -118,7 +118,7 @@ impl TestPlan {
 
 pub struct PlanRunner {
     vm: VirtualMachine,
-    string_table: Vec<Record>,
+    string_table: Vec<LineInfo>,
     plan: TestPlan,
     locale: String,
 }
@@ -135,12 +135,12 @@ impl PlanRunner {
         let program = Program::decode(&*proto_data)
             .unwrap();
 
-        // Load Records from a csv file.
+        // Load LineInfos from a csv file.
         let mut csv_path = proto_path;
         csv_path.set_extension("csv");
         let mut csv_reader = csv::Reader::from_path(csv_path)
             .unwrap();
-        let string_table: Vec<Record> = csv_reader.deserialize()
+        let string_table: Vec<LineInfo> = csv_reader.deserialize()
             .map(|result| result.unwrap())
             .collect();
 
@@ -168,8 +168,8 @@ impl PlanRunner {
 
     fn get_composed_text_for_line(&self, line: &Line) -> String {
         let mut line_text = self.string_table.iter()
-            .find(|record| record.id == line.id)
-            .map(|record| &record.text)
+            .find(|line_info| line_info.id == line.id)
+            .map(|line_info| &line_info.text)
             .unwrap()
             .clone();
         for (i, substitution) in line.substitutions.iter().enumerate() {

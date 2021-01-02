@@ -18,12 +18,12 @@ fn set_up_vm(yarnc_path: &str) -> VirtualMachine {
     let program = Program::decode(&*proto_data)
         .unwrap();
 
-    // Load Records from a csv file.
+    // Load LineInfos from a csv file.
     let mut csv_path = proto_path;
     csv_path.set_extension("csv");
     let mut csv_reader = csv::Reader::from_path(csv_path)
         .unwrap();
-    let _string_table: Vec<Record> = csv_reader.deserialize()
+    let _string_table: Vec<LineInfo> = csv_reader.deserialize()
         .map(|result| result.unwrap())
         .collect();
 

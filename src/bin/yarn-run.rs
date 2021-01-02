@@ -27,11 +27,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let program = Program::decode(&*proto_data)?;
     // println!("{:#?}", &program);
 
-    // Load Records from a csv file.
+    // Load LineInfos from a csv file.
     let mut csv_path = proto_path;
     csv_path.set_extension("csv");
     let mut csv_reader = csv::Reader::from_path(csv_path)?;
-    let string_table: Vec<Record> = csv_reader.deserialize()
+    let string_table: Vec<LineInfo> = csv_reader.deserialize()
         .map(|result| result.unwrap())
         .collect();
 
@@ -46,8 +46,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             match vm.continue_dialogue() {
                 SuspendReason::Line(line) => {
                     let text = string_table.iter()
-                        .find(|record| record.id == line.id)
-                        .map(|record| &record.text);
+                        .find(|line_info| line_info.id == line.id)
+                        .map(|line_info| &line_info.text);
                     if let Some(text) = text {
                         println!("{}", text);
                     } else {
@@ -58,8 +58,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                     println!("== Choose option ==");
                     for (i, opt) in options.iter().enumerate() {
                         let text = string_table.iter()
-                            .find(|record| record.id == opt.line.id)
-                            .map(|record| &record.text);
+                            .find(|line_info| line_info.id == opt.line.id)
+                            .map(|line_info| &line_info.text);
                         if let Some(text) = text {
                             println!("{}: {}", i, text);
                         } else {

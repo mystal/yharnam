@@ -19,7 +19,7 @@ mod utils;
 mod value;
 
 #[derive(Debug, Deserialize)]
-pub struct Record {
+pub struct LineInfo {
     pub id: String,
     pub text: String,
     pub file: String,
