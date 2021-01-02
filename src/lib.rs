@@ -45,8 +45,6 @@ pub struct Record {
 ///
 /// You do not create instances of this struct yourself. They are created by the [`VirtualMachine`]
 /// during program execution.
-///
-/// [`VirtualMachine`]: ./struct.VirtualMachine.html
 #[derive(Debug, Clone)]
 pub struct Line {
     pub id: String,

@@ -8,17 +8,12 @@ use unic_langid::LanguageIdentifier;
 const FORMAT_FUNCTION_VALUE_PLACEHOLDER: &str = "<VALUE PLACEHOLDER>";
 
 /// Expands all [format functions](https://yarnspinner.dev/docs/syntax#format-functions)
-/// in a given string, using pluralisation rules specified by the given locale.
+/// in a given string, using pluralisation rules specified by the given locale (as an IETF
+/// BCP-47 language tag).
 ///
-/// <param name="input">The string to process.</param>
-/// <param name="localeCode">The locale code, as an IETF BCP-47
-/// language tag, to use when determining the plural categories of
-/// numbers.</param>
-/// <returns>The original string, with any format functions
-/// replaced with their evaluated versions.</returns>
-/// <throws cref="ArgumentException">Thrown when the string
-/// contains a `plural` or `ordinal` format function, but the
-/// specified value cannot be parsed as a number.</throws>
+/// # Panics
+/// When the string contains a `plural` or `ordinal` format function, but the
+/// specified value cannot be parsed as a number.
 pub fn expand_format_functions(input: &str, locale_code: &str) -> String {
     let (mut line_with_replacements, format_functions) = parse_format_functions(input);
 
@@ -163,9 +158,6 @@ fn expect_id(chars: &mut Peekable<Chars>) -> String {
     let mut id_string = String::new();
 
     // Read the first character, which must be a letter
-    // int tempNext = stringReader.Read();
-    // AssertNotEndOfInput(tempNext);
-    // char nextChar = (char)tempNext;
     let mut next_char = chars.next()
         .unwrap();
 
@@ -173,7 +165,6 @@ fn expect_id(chars: &mut Peekable<Chars>) -> String {
         id_string.push(next_char);
     } else {
         panic!("Expected an identifier inside a format function in line");
-        // throw new ArgumentException($"Expected an identifier inside a format function in line \"{input}\"");
     }
 
     // Read zero or more letters, numbers, or underscores
@@ -201,18 +192,12 @@ fn expect_string(chars: &mut Peekable<Chars>) -> String {
 
     let mut string = String::new();
 
-    // int tempNext = stringReader.Read();
-    // AssertNotEndOfInput(tempNext);
     let mut next_char = chars.next().unwrap();
     if next_char != '"' {
         panic!("Expected a string inside a format function in line");
-        // throw new ArgumentException($"Expected a string inside a format function in line {input}");
     }
 
     loop {
-        // tempNext = stringReader.Read();
-        // AssertNotEndOfInput(tempNext);
-        // nextChar = (char)tempNext;
         next_char = chars.next().unwrap();
 
         if next_char == '"' {
@@ -221,9 +206,6 @@ fn expect_string(chars: &mut Peekable<Chars>) -> String {
             break;
         } else if next_char == '\\' {
             // an escaped quote or backslash
-            // int nextNext = stringReader.Read();
-            // AssertNotEndOfInput(nextNext);
-            // int nextNextChar = (char)nextNext;
             let escaped_char = chars.next().unwrap();
             if escaped_char == '\\' || escaped_char == '"' || escaped_char == '%' {
                 string.push(escaped_char);
@@ -245,22 +227,18 @@ fn expect_character(chars: &mut Peekable<Chars>, expected_char: char) {
     consume_whitespace(chars, false);
 
     let next_char = chars.next();
-    // int tempNext = stringReader.Read();
-    // AssertNotEndOfInput(tempNext);
     if next_char != Some(expected_char) {
         panic!("Expected a {} inside a format function in line", expected_char);
-        // throw new ArgumentException($"Expected a {character} inside a format function in line \"{input}\"");
     }
 }
 
 // Read and discard all whitespace until we hit
 // something that isn't whitespace.
-fn consume_whitespace(chars: &mut Peekable<Chars>, allow_end_of_line: bool/* = false*/) {
+fn consume_whitespace(chars: &mut Peekable<Chars>, allow_end_of_line: bool) {
     loop {
         let next_char = chars.peek();
         if next_char.is_none() && !allow_end_of_line {
             panic!("Unexpected end of line inside a format function in line");
-            // throw new ArgumentException($"Unexpected end of line inside a format function in line \"{input}");
         }
         let next_char = *next_char.unwrap();
 
