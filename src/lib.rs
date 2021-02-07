@@ -76,8 +76,8 @@ impl YarnOption {
     }
 }
 
-pub type ReturningFunction = dyn Fn(&[YarnValue]) -> YarnValue;
-pub type Function = dyn Fn(&[YarnValue]);
+pub type ReturningFunction = dyn Fn(&[YarnValue]) -> YarnValue + Send + Sync;
+pub type Function = dyn Fn(&[YarnValue]) + Send + Sync;
 
 pub enum YarnFunction {
     Void(&'static Function),
