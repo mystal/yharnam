@@ -11,12 +11,14 @@ repository = "https://github.com/mystal/yharnam"
 [dependencies]
 csv = "1"
 intl_pluralrules = "7"
+lalrpop-util = "0.19.4"
 log = "0.4"
 prost = "0.8"
 serde = { version = "1", features = ["derive"] }
 unic-langid = "0.9"
 
 [build-dependencies]
+lalrpop = "0.19.4"
 prost-build = "0.8"
 
 [dev-dependencies]

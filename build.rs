@@ -3,4 +3,6 @@ fn main() {
         &["src/yarn_spinner.proto"],
         &["src/"],
     ).unwrap();
+    lalrpop::process_root()
+        .unwrap();
 }
