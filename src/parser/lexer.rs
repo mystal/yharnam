@@ -44,7 +44,7 @@ pub enum LexerError {
     UnexpectedCharacter(char),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum LexerMode {
     Header,
     HeaderValue,
@@ -108,7 +108,7 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    pub fn rest_of_line(&mut self, start: usize, trim_whitespace: bool) -> (usize, &'input str) {
+    pub fn rest_of_line(&mut self, start: usize) -> (usize, &'input str) {
         while let Some((loc, c)) = self.lookahead {
             if c == '\n' {
                 return (loc, self.slice(start, loc));
@@ -193,8 +193,24 @@ impl<'input> Iterator for Lexer<'input> {
                     return Some(Err(LexerError::UnexpectedCharacter(c)));
                 }
                 LexerMode::HeaderValue => {
+                    // TODO: Find first and last non-whitespace characters.
+                    // let mut start_value = None;
+                    // let mut end_value = None;
+                    // if c == '\n' {
+                    // }
+                    // while let Some((loc, c)) = self.lookahead {
+                    //     if c == '\n' {
+                    //         return (loc, self.slice(start, loc));
+                    //     }
+                    //     self.bump();
+                    // }
+
+                    // (self.eof_location as usize, self.slice(start, self.eof_location as usize))
+
+                    // TODO: Support comments at end of line. If we see a '/' character, check if
+                    // the one after is one and stop.
                     // Get a string until the end of the line and trim it.
-                    let (end, value) = self.rest_of_line(start, true);
+                    let (end, value) = self.rest_of_line(start);
                     let tok = Token::HeaderValue(value);
                     self.mode = LexerMode::Header;
                     return Some(Ok((start, tok, end)));
