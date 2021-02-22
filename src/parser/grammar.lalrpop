@@ -1,27 +1,86 @@
-use super::ast;
+use super::{
+    ast,
+    lexer::LexerError,
+    token::{Token},
+};
 
-grammar;
+grammar<'input>();
 
-pub Dialogue: ast::Dialogue = <nodes:Node+> => ast::Dialogue {
+pub Dialogue: ast::Dialogue<'input> = <nodes:Node+> => ast::Dialogue {
     nodes,
 };
 
-Node: ast::Node = <headers:Header+> "---" <body:Body> "===" => ast::Node {
+// Identifier: String = <r"[a-zA-Z_][a-zA-Z0-9_]*"> => <>.to_string();
+
+// VarIdentifier = "$" <Identifier>;
+
+// Value = {
+//     LiteralNumber,
+//     "true",
+//     "false",
+//     Variable,
+//     LiteralString,
+//     "null",
+//     Function,
+// };
+
+// Expression = {
+//     "(" Expression ")",
+//     Value,
+// };
+
+// Function = "Identifier" "(" Expression? ("," Expression)* ")";
+
+Node: ast::Node<'input> = <headers:Header+> "---" "EOL" "===" "EOL" => ast::Node {
     headers,
-    body,
+    body: ast::Body::new(),
 };
 
-Header: ast::Header = <key:Identifier> ":" <value:Identifier> => ast::Header {
+Header: ast::Header<'input> = <key:"Identifier"> ":" <value:"HeaderValue"> "EOL" => ast::Header {
     key,
     value,
 };
 
-Body: ast::Body = <statements:Statement*> => ast::Body {
-    statements,
-};
+// Body: ast::Body = <statements:Statement*> => ast::Body {
+//     statements,
+// };
 
-Statement = {
-    Identifier,
-};
+// Statement = {
+//     Identifier,
+// };
 
-Identifier: String = <r"[a-zA-Z_][a-zA-Z0-9_]*"> => <>.to_string();
+extern {
+    type Location = usize;
+    type Error = LexerError;
+
+    enum Token<'input> {
+        "Identifier" => Token::Identifier(<&'input str>),
+        "HeaderValue" => Token::HeaderValue(<&'input str>),
+        "LiteralNumber" => Token::LiteralNumber(<f32>),
+        "LiteralString" => Token::LiteralString(<&'input str>),
+        "true" => Token::KeywordTrue,
+        "false" => Token::KeywordFalse,
+        "null" => Token::KeywordNull,
+        "---" => Token::BodyStart,
+        "===" => Token::BodyEnd,
+        ":" => Token::HeaderDelimiter,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "," => Token::Comma,
+        "<<" => Token::CommandStart,
+        ">>" => Token::CommandEnd,
+        "if" => Token::CommandIf,
+        "elseif" => Token::CommandElseIf,
+        "else" => Token::CommandElse,
+        "set" => Token::CommandSet,
+        "call" => Token::CommandCall,
+        "[[" => Token::OptionStart,
+        "]]" => Token::OptionEnd,
+        "|" => Token::OptionDelimiter,
+        "{" => Token::ExpressionStart,
+        "}" => Token::ExpressionEnd,
+        "[" => Token::FormatFunctionStart,
+        "]" => Token::FormatFunctionEnd,
+        "EOL" => Token::NewLine,
+    }
+}

@@ -1,8 +1,13 @@
 use lalrpop_util::lalrpop_mod;
 
-lalrpop_mod!(grammar, "/parser/grammar.rs");
-
 mod ast;
+lalrpop_mod!(
+    #[allow(unused)]
+    grammar,
+    "/parser/grammar.rs"
+);
+mod lexer;
+mod token;
 
 #[cfg(test)]
 mod tests {
@@ -14,11 +19,12 @@ mod tests {
 r#"
 title: test
 ---
-blah
+//blah
 ===
 "#;
+        let lex = lexer::Lexer::new(src);
         let dialogue = grammar::DialogueParser::new()
-            .parse(src)
+            .parse(lex)
             .unwrap();
         dbg!(dialogue);
     }
