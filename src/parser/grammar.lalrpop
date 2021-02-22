@@ -36,9 +36,9 @@ Node: ast::Node<'input> = <headers:Header+> "---" "EOL" "===" "EOL" => ast::Node
     body: ast::Body::new(),
 };
 
-Header: ast::Header<'input> = <key:"Identifier"> ":" <value:"HeaderValue"> "EOL" => ast::Header {
+Header: ast::Header<'input> = <key:"Identifier"> ":" <value:"HeaderValue"?> "EOL" => ast::Header {
     key,
-    value,
+    value: value.unwrap_or_default(),
 };
 
 // Body: ast::Body = <statements:Statement*> => ast::Body {
