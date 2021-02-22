@@ -15,6 +15,7 @@ pub mod yarn_proto {
     include!(concat!(env!("OUT_DIR"), "/yarn.rs"));
 }
 
+mod compiler;
 mod parser;
 mod utils;
 mod value;
