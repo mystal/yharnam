@@ -9,12 +9,19 @@ lalrpop_mod!(
 mod lexer;
 mod token;
 
+pub fn parse_string(src: &str) -> ast::Dialogue {
+    let lex = lexer::Lexer::new(src);
+    grammar::DialogueParser::new()
+        .parse(lex)
+        .unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_dialogue() {
+    fn test_parse() {
         let src =
 r#"
 title: test
