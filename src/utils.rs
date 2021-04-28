@@ -101,22 +101,22 @@ fn parse_format_functions(input: &str) -> (String, Vec<ParsedFormatFunction>) {
         }
 
         // the start of a format function!
-        let mut function = ParsedFormatFunction::default();
 
         // Structure of a format function:
         // [ name "value" key1="value1" key2="value2" ]
 
         // Ensure that only valid function names are used
-        function.kind = match expect_id(&mut chars).as_ref() {
+        let kind = match expect_id(&mut chars).as_ref() {
             "select" => FormatFunctionKind::Select,
             "plural" => FormatFunctionKind::Plural,
             "ordinal" => FormatFunctionKind::Ordinal,
             name => panic!("Invalid formatting function {} in line \"{}\"", name, input),
         };
 
-        function.value = expect_string(&mut chars);
+        let value = expect_string(&mut chars);
 
         // parse and read the data for this format function
+        let mut data = HashMap::new();
         loop {
             consume_whitespace(&mut chars, false);
 
@@ -130,12 +130,18 @@ fn parse_format_functions(input: &str) -> (String, Vec<ParsedFormatFunction>) {
             expect_character(&mut chars, '=');
             let value = expect_string(&mut chars);
 
-            if function.data.contains_key(&key) {
+            if data.contains_key(&key) {
                 panic!("Duplicate value '{}' in format function inside line \"{}\"", &key, input)
             }
 
-            function.data.insert(key, value);
+            data.insert(key, value);
         }
+
+        let function = ParsedFormatFunction {
+            kind,
+            value,
+            data,
+        };
 
         // We now expect the end of this format function
         expect_character(&mut chars, ']');
@@ -183,7 +189,8 @@ fn expect_id(chars: &mut Peekable<Chars>) -> String {
             break;
         }
     }
-    return id_string;
+
+    id_string
 }
 
 // string = " (\"|\\|^["])* "
@@ -218,7 +225,7 @@ fn expect_string(chars: &mut Peekable<Chars>) -> String {
 
     }
 
-    return string;
+    string
 }
 
 // Consume a character, and throw an exception if it

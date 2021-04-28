@@ -675,7 +675,7 @@ impl VirtualMachine {
                     self.execution_state = ExecutionState::Suspended;
 
                     return Some(SuspendReason::NodeChange {
-                        start: node_name.clone(),
+                        start: node_name,
                         end: old_node,
                     })
                 } else {
