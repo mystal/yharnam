@@ -13,17 +13,19 @@ fn set_up_vm(yarnc_path: &str) -> VirtualMachine {
     let proto_path = PathBuf::from(yarnc_path);
 
     // Read the file's bytes and load a Program.
-    let proto_data = fs::read(&proto_path)
-        .unwrap();
-    let program = Program::decode(&*proto_data)
-        .unwrap();
+    let proto_data = fs::read(&proto_path).unwrap();
+    let program = Program::decode(&*proto_data).unwrap();
 
     // Load LineInfos from a csv file.
     let mut csv_path = proto_path;
-    csv_path.set_extension("csv");
-    let mut csv_reader = csv::Reader::from_path(csv_path)
-        .unwrap();
-    let _string_table: Vec<LineInfo> = csv_reader.deserialize()
+    csv_path.set_file_name(format!(
+        "{}-Lines.csv",
+        csv_path.file_stem().unwrap().to_str().unwrap()
+    ));
+
+    let mut csv_reader = csv::Reader::from_path(csv_path).unwrap();
+    let _string_table: Vec<LineInfo> = csv_reader
+        .deserialize()
         .map(|result| result.unwrap())
         .collect();
 

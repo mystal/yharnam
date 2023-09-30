@@ -28,14 +28,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Load LineInfos from a csv file.
     let mut csv_path = proto_path;
-    println!(
-        "Changing filename from {:?} to {}",
-        csv_path.file_name(),
-        format!(
-            "{}-Lines.csv",
-            csv_path.file_stem().unwrap().to_str().unwrap()
-        )
-    );
 
     csv_path.set_file_name(format!(
         "{}-Lines.csv",
