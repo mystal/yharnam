@@ -15,12 +15,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Read first argument as a path to a yarnc file.
     args.next();
-    let proto_path = args.next()
-        .unwrap();
+    let proto_path = args.next().unwrap();
     let proto_path = PathBuf::from(proto_path);
+    println!("Opening file at {:?}", proto_path);
 
-    let start_node = args.next()
-        .unwrap_or(DEFAULT_START_NODE_NAME.to_string());
+    let start_node = args.next().unwrap_or(DEFAULT_START_NODE_NAME.to_string());
 
     // Read the file's bytes and load a Program.
     let proto_data = fs::read(&proto_path)?;
@@ -29,9 +28,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Load LineInfos from a csv file.
     let mut csv_path = proto_path;
-    csv_path.set_extension("csv");
+    println!(
+        "Changing filename from {:?} to {}",
+        csv_path.file_name(),
+        format!(
+            "{}-Lines.csv",
+            csv_path.file_stem().unwrap().to_str().unwrap()
+        )
+    );
+
+    csv_path.set_file_name(format!(
+        "{}-Lines.csv",
+        csv_path.file_stem().unwrap().to_str().unwrap()
+    ));
+    println!("Opening {:?}", csv_path);
+
     let mut csv_reader = csv::Reader::from_path(csv_path)?;
-    let string_table: Vec<LineInfo> = csv_reader.deserialize()
+    let string_table: Vec<LineInfo> = csv_reader
+        .deserialize()
         .map(|result| result.unwrap())
         .collect();
 
@@ -45,7 +59,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         loop {
             match vm.continue_dialogue() {
                 SuspendReason::Line(line) => {
-                    let text = string_table.iter()
+                    let text = string_table
+                        .iter()
                         .find(|line_info| line_info.id == line.id)
                         .map(|line_info| &line_info.text);
                     if let Some(text) = text {
@@ -57,7 +72,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 SuspendReason::Options(options) => {
                     println!("== Choose option ==");
                     for (i, opt) in options.iter().enumerate() {
-                        let text = string_table.iter()
+                        let text = string_table
+                            .iter()
                             .find(|line_info| line_info.id == opt.line.id)
                             .map(|line_info| &line_info.text);
                         if let Some(text) = text {

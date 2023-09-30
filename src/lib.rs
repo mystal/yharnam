@@ -1,15 +1,11 @@
 // #![warn(missing_docs)]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryInto};
 
 use log::*;
 use serde::Deserialize;
 
-pub use crate::{
-    yarn_proto::Program,
-    utils::*,
-    value::YarnValue,
-};
+pub use crate::{utils::*, value::YarnValue, yarn_proto::Program};
 
 pub mod yarn_proto {
     include!(concat!(env!("OUT_DIR"), "/yarn.rs"));
@@ -24,7 +20,7 @@ pub struct LineInfo {
     pub text: String,
     pub file: String,
     pub node: String,
-    #[serde(rename="lineNumber")]
+    #[serde(rename = "lineNumber")]
     pub line_number: u32,
 }
 
@@ -53,10 +49,7 @@ pub struct Line {
 
 impl Line {
     fn new(id: String, substitutions: Vec<String>) -> Self {
-        Self {
-            id,
-            substitutions,
-        }
+        Self { id, substitutions }
     }
 }
 
@@ -147,10 +140,7 @@ pub enum SuspendReason {
     Line(Line),
     Options(Vec<YarnOption>),
     Command(String),
-    NodeChange {
-        start: String,
-        end: String,
-    },
+    NodeChange { start: String, end: String },
     DialogueComplete(String),
 }
 
@@ -202,9 +192,7 @@ impl VirtualMachine {
 
         library.insert(
             "UnaryMinus".to_string(),
-            FunctionInfo::new_returning(1, &|parameters: &[YarnValue]| {
-                parameters[0].neg()
-            }),
+            FunctionInfo::new_returning(1, &|parameters: &[YarnValue]| parameters[0].neg()),
         );
 
         library.insert(
@@ -347,7 +335,9 @@ impl VirtualMachine {
         // Execute instructions until something forces us to stop
         loop {
             let instruction_count = if !self.state.current_node_name.is_empty() {
-                self.program.nodes[&self.state.current_node_name].instructions.len()
+                self.program.nodes[&self.state.current_node_name]
+                    .instructions
+                    .len()
             } else {
                 // No node is running, so return 0.
                 0
@@ -408,13 +398,12 @@ impl VirtualMachine {
     }
 
     fn run_instruction(&mut self, instruction: yarn_proto::Instruction) -> Option<SuspendReason> {
-        use yarn_proto::{
-            instruction::OpCode,
-            operand::Value,
-        };
+        use yarn_proto::{instruction::OpCode, operand::Value};
 
-        let opcode = OpCode::from_i32(instruction.opcode)
-            .unwrap();
+        let opcode = instruction
+            .opcode
+            .try_into()
+            .expect("convert integer to operation code");
 
         debug!("Running {:?} {:?}", opcode, instruction.operands);
 
@@ -443,7 +432,9 @@ impl VirtualMachine {
                     // of expressions in the command. We need to pop
                     // these values off the stack and deliver them to
                     // the line handler.
-                    if let Some(Value::FloatValue(expression_count)) = instruction.operands.get(1).and_then(|o| o.value.as_ref()) {
+                    if let Some(Value::FloatValue(expression_count)) =
+                        instruction.operands.get(1).and_then(|o| o.value.as_ref())
+                    {
                         let expression_count = *expression_count as u32;
                         substitutions.resize(expression_count as usize, String::new());
 
@@ -471,7 +462,9 @@ impl VirtualMachine {
                     // of expressions in the command. We need to pop
                     // these values off the stack and deliver them to
                     // the line handler.
-                    if let Some(Value::FloatValue(expression_count)) = instruction.operands.get(1).and_then(|o| o.value.as_ref()) {
+                    if let Some(Value::FloatValue(expression_count)) =
+                        instruction.operands.get(1).and_then(|o| o.value.as_ref())
+                    {
                         let expression_count = *expression_count as u32;
 
                         // Get the values from the stack, and
@@ -480,7 +473,11 @@ impl VirtualMachine {
                             let substitution = self.state.stack.pop().unwrap().as_string();
 
                             // TODO: Try using String::replace_range.
-                            command_text = command_text.replacen(&format!("{{{}}}", expression_index), &substitution, 1);
+                            command_text = command_text.replacen(
+                                &format!("{{{}}}", expression_index),
+                                &substitution,
+                                1,
+                            );
                         }
                     }
 
@@ -491,12 +488,16 @@ impl VirtualMachine {
                 }
             }
             OpCode::AddOption => {
-                let line = if let Some(Value::StringValue(opt)) = instruction.operands.get(0).and_then(|o| o.value.as_ref()) {
+                let line = if let Some(Value::StringValue(opt)) =
+                    instruction.operands.get(0).and_then(|o| o.value.as_ref())
+                {
                     let mut substitutions = Vec::new();
 
                     // get the number of expressions that we're
                     // working with out of the third operand
-                    if let Some(Value::FloatValue(expression_count)) = instruction.operands.get(2).and_then(|o| o.value.as_ref()) {
+                    if let Some(Value::FloatValue(expression_count)) =
+                        instruction.operands.get(2).and_then(|o| o.value.as_ref())
+                    {
                         let expression_count = *expression_count as u32;
                         substitutions.resize(expression_count as usize, String::new());
 
@@ -513,7 +514,9 @@ impl VirtualMachine {
                     // TODO: Handle error.
                     panic!();
                 };
-                let node_name = if let Some(Value::StringValue(opt)) = instruction.operands.get(1).and_then(|o| o.value.as_ref()) {
+                let node_name = if let Some(Value::StringValue(opt)) =
+                    instruction.operands.get(1).and_then(|o| o.value.as_ref())
+                {
                     opt.clone()
                 } else {
                     // TODO: Handle error.
@@ -566,14 +569,15 @@ impl VirtualMachine {
             }
             OpCode::PushNull => {
                 self.state.stack.push(YarnValue::Null);
-            },
+            }
             OpCode::JumpIfFalse => {
                 // Jump to a named label if the value on the top of the stack
                 // evaluates to the boolean value 'false'.
                 if let Some(val) = self.state.stack.last() {
                     if !val.as_bool() {
                         if let Some(Value::StringValue(label)) = &instruction.operands[0].value {
-                            self.state.program_counter = self.find_instruction_point_for_label(label) - 1;
+                            self.state.program_counter =
+                                self.find_instruction_point_for_label(label) - 1;
                         } else {
                             // TODO: Error.
                         }
@@ -602,9 +606,7 @@ impl VirtualMachine {
                         if expected_param_count != actual_param_count {
                             panic!(
                                 "Function {} expected {}, but received {}",
-                                func_name,
-                                expected_param_count,
-                                actual_param_count,
+                                func_name, expected_param_count, actual_param_count,
                             );
                         }
 
@@ -677,7 +679,7 @@ impl VirtualMachine {
                     return Some(SuspendReason::NodeChange {
                         start: node_name,
                         end: old_node,
-                    })
+                    });
                 } else {
                     // TODO: Error!
                 }
@@ -688,12 +690,18 @@ impl VirtualMachine {
     }
 
     fn find_instruction_point_for_label(&self, label: &str) -> isize {
-        let instruction_point = self.program.nodes.get(&self.state.current_node_name)
+        let instruction_point = self
+            .program
+            .nodes
+            .get(&self.state.current_node_name)
             .and_then(|node| node.labels.get(label));
         if let Some(&instruction_point) = instruction_point {
             instruction_point as isize
         } else {
-            panic!("Unknown label {} in node {}", label, self.state.current_node_name);
+            panic!(
+                "Unknown label {} in node {}",
+                label, self.state.current_node_name
+            );
         }
     }
 }
