@@ -45,11 +45,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut vm = VirtualMachine::new(program);
     if vm.program.nodes.contains_key(&start_node) {
         // Set the start node.
-        vm.set_node(&start_node);
+        vm.set_node(&start_node)?;
 
         // Start executing.
         loop {
-            match vm.continue_dialogue() {
+            match vm.continue_dialogue()? {
+                // Err(e) => return Err(Box::new(e)),
                 SuspendReason::Line(line) => {
                     let text = string_table
                         .iter()
@@ -91,6 +92,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 SuspendReason::DialogueComplete(last_node) => {
                     println!("== Node end: {} ==", last_node);
                     println!("== Dialogue complete ==");
+                    break;
+                }
+                SuspendReason::InvalidOption(option_name) => {
+                    println!("INVALID OPTION: {option_name} is not an option. Please try again");
                     break;
                 }
             }

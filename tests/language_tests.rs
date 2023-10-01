@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
@@ -56,77 +57,85 @@ fn set_up_vm(yarnc_path: &str) -> VirtualMachine {
 }
 
 #[test]
-fn test_commands() {
+fn test_commands() -> Result<(), Box<dyn Error>> {
     let mut runner = test_plan::PlanRunner::new("test_files/Commands.yarn");
-    runner.run();
+    runner.run()
 }
 
 #[test]
-fn test_expressions() {
+fn test_expressions() -> Result<(), Box<dyn Error>> {
     let mut vm = set_up_vm("test_files/Expressions.yarn.yarnc");
 
-    vm.set_node("Start");
+    vm.set_node("Start")?;
     while vm.execution_state != ExecutionState::Stopped {
-        vm.continue_dialogue();
+        vm.continue_dialogue()?;
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_format_functions() {
+fn test_format_functions() -> Result<(), Box<dyn Error>> {
     let mut runner = test_plan::PlanRunner::new("test_files/FormatFunctions.yarn");
-    runner.run();
+    runner.run()
 }
 
 #[test]
-fn test_functions() {
+fn test_functions() -> Result<(), Box<dyn Error>> {
     let mut vm = set_up_vm("test_files/Functions.yarn.yarnc");
 
-    vm.set_node("Start");
+    vm.set_node("Start")?;
     while vm.execution_state != ExecutionState::Stopped {
-        vm.continue_dialogue();
+        vm.continue_dialogue()?;
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_if_statements() {
+fn test_if_statements() -> Result<(), Box<dyn Error>> {
     let mut runner = test_plan::PlanRunner::new("test_files/IfStatements.yarn");
-    runner.run();
+    runner.run()
 }
 
 #[test]
-fn test_inline_expressions() {
+fn test_inline_expressions() -> Result<(), Box<dyn Error>> {
     let mut runner = test_plan::PlanRunner::new("test_files/InlineExpressions.yarn");
-    runner.run();
+    runner.run()
 }
 
 #[test]
-fn test_shortcut_options() {
+fn test_shortcut_options() -> Result<(), Box<dyn Error>> {
     let mut runner = test_plan::PlanRunner::new("test_files/ShortcutOptions.yarn");
-    runner.run();
+    runner.run()
 }
 
 #[test]
-fn test_smileys() {
+fn test_smileys() -> Result<(), Box<dyn Error>> {
     let mut runner = test_plan::PlanRunner::new("test_files/Smileys.yarn");
-    runner.run();
+    runner.run()
 }
 
 #[test]
-fn test_types() {
+fn test_types() -> Result<(), Box<dyn Error>> {
     let mut vm = set_up_vm("test_files/Types.yarn.yarnc");
 
-    vm.set_node("Start");
+    vm.set_node("Start")?;
     while vm.execution_state != ExecutionState::Stopped {
-        vm.continue_dialogue();
+        vm.continue_dialogue()?;
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_variable_storage() {
+fn test_variable_storage() -> Result<(), Box<dyn Error>> {
     let mut vm = set_up_vm("test_files/VariableStorage.yarn.yarnc");
 
-    vm.set_node("Start");
+    vm.set_node("Start")?;
     while vm.execution_state != ExecutionState::Stopped {
-        vm.continue_dialogue();
+        vm.continue_dialogue()?;
     }
+
+    Ok(())
 }

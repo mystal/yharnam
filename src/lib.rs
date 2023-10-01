@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, convert::TryInto};
 
+use errors::VmError;
 use log::*;
 use serde::Deserialize;
 
@@ -11,6 +12,7 @@ pub mod yarn_proto {
     include!(concat!(env!("OUT_DIR"), "/yarn.rs"));
 }
 
+pub mod errors;
 mod utils;
 mod value;
 
@@ -142,6 +144,7 @@ pub enum SuspendReason {
     Command(String),
     NodeChange { start: String, end: String },
     DialogueComplete(String),
+    InvalidOption(String),
 }
 
 pub struct VmState {
@@ -295,18 +298,15 @@ impl VirtualMachine {
         }
     }
 
-    pub fn set_node(&mut self, node_name: &str) -> bool {
-        // TODO: Handle error cases.
-        // if (Program == null || Program.Nodes.Count == 0) {
-        //     throw new DialogueException($"Cannot load node {nodeName}: No nodes have been loaded.");
-        // }
+    pub fn set_node(&mut self, node_name: &str) -> Result<(), VmError> {
+        if self.program.nodes.is_empty() {
+            return Err("No nodes available in the program".into());
+        }
 
-        // if (Program.Nodes.ContainsKey(nodeName) == false) {
-        //     executionState = ExecutionState.Stopped;
-        //     throw new DialogueException($"No node named {nodeName} has been loaded.");
-        // }
-
-        // dialogue.LogDebugMessage ("Running node " + nodeName);
+        if !self.program.nodes.contains_key(node_name) {
+            self.execution_state = ExecutionState::Stopped;
+            return Err(format!("Program does not contain node {node_name}").into());
+        }
 
         self.state = VmState::new();
         self.state.current_node_name = node_name.to_string();
@@ -314,20 +314,18 @@ impl VirtualMachine {
         // TODO: Suspending makes sense to me, but is it correct?
         self.execution_state = ExecutionState::Suspended;
 
-        true
+        Ok(())
     }
 
     // TODO: Return the reason why we stopped execution.
     // Either Line, Options, Command, NodeStart?, NodeEnd?, DialogeEnd
-    pub fn continue_dialogue(&mut self) -> SuspendReason {
-        // TODO: Handle error cases.
-        // if (currentNode == null)
-        // {
-        //     throw new DialogueException("Cannot continue running dialogue. No node has been selected.");
-        // }
+    pub fn continue_dialogue(&mut self) -> Result<SuspendReason, VmError> {
+        if self.state.current_node_name.is_empty() {
+            return Err("Cannot continue running dialogue. No node has been selected.".into());
+        }
 
         if self.execution_state == ExecutionState::WaitingOnOptionSelection {
-            panic!("Cannot continue running dialogue. Still waiting on option selection.");
+            return Err("Unable to continue dialogue, waiting on option selection".into());
         }
 
         self.execution_state = ExecutionState::Running;
@@ -349,7 +347,7 @@ impl VirtualMachine {
                 self.execution_state = ExecutionState::Stopped;
                 self.state = VmState::new();
                 // dialogue.LogDebugMessage ("Run complete.");
-                return SuspendReason::DialogueComplete(last_node);
+                return Ok(SuspendReason::DialogueComplete(last_node));
             }
 
             let current_instruction = {
@@ -361,8 +359,18 @@ impl VirtualMachine {
 
             self.state.program_counter += 1;
 
-            if let Some(suspend) = suspend {
-                return suspend;
+            match suspend {
+                Ok(suspend) => {
+                    // if we have a suspension reason, break out of the loop
+                    return Ok(suspend);
+                }
+                Err(VmError::NoOperation) => {
+                    // If there is a no-op, just continue
+                }
+                Err(e) => {
+                    // But raise all other errors
+                    return Err(e);
+                }
             }
         }
     }
@@ -397,13 +405,20 @@ impl VirtualMachine {
         debug!("Selected option: {}", selected_option_id);
     }
 
-    fn run_instruction(&mut self, instruction: yarn_proto::Instruction) -> Option<SuspendReason> {
+    fn run_instruction(
+        &mut self,
+        instruction: yarn_proto::Instruction,
+    ) -> Result<SuspendReason, VmError> {
         use yarn_proto::{instruction::OpCode, operand::Value};
 
-        let opcode = instruction
-            .opcode
-            .try_into()
-            .expect("convert integer to operation code");
+        let opcode = match instruction.opcode.try_into() {
+            Ok(opcode) => opcode,
+            Err(err) => {
+                return Err(
+                    format!("Error decoding opcode {}: {:?}", instruction.opcode, err).into(),
+                )
+            }
+        };
 
         debug!("Running {:?} {:?}", opcode, instruction.operands);
 
@@ -412,14 +427,14 @@ impl VirtualMachine {
                 if let Some(Value::StringValue(label)) = &instruction.operands[0].value {
                     self.state.program_counter = self.find_instruction_point_for_label(label) - 1;
                 } else {
-                    // TODO: Error.
+                    return Err("Invalid jump to - no label in the value".into());
                 }
             }
             OpCode::Jump => {
                 if let Some(YarnValue::Str(label)) = self.state.stack.last() {
                     self.state.program_counter = self.find_instruction_point_for_label(label) - 1;
                 } else {
-                    // TODO: Error.
+                    return Err("Invalid jump - found no items in the stack".into());
                 }
             }
             OpCode::RunLine => {
@@ -447,9 +462,9 @@ impl VirtualMachine {
 
                     self.execution_state = ExecutionState::Suspended;
                     let line = Line::new(string_key.clone(), substitutions);
-                    return Some(SuspendReason::Line(line));
+                    return Ok(SuspendReason::Line(line));
                 } else {
-                    // TODO: Handle this error!
+                    return Err("Invalid run line - no label in the value".into());
                 }
             }
             OpCode::RunCommand => {
@@ -482,9 +497,9 @@ impl VirtualMachine {
                     }
 
                     self.execution_state = ExecutionState::Suspended;
-                    return Some(SuspendReason::Command(command_text));
+                    return Ok(SuspendReason::Command(command_text));
                 } else {
-                    // TODO: Error.
+                    return Err("Invalid run command - no label in the value".into());
                 }
             }
             OpCode::AddOption => {
@@ -511,16 +526,19 @@ impl VirtualMachine {
                     }
                     Line::new(opt.clone(), substitutions)
                 } else {
-                    // TODO: Handle error.
-                    panic!();
+                    return Err(
+                        "Invalid add option - unable to find instruction operand at index 0".into(),
+                    );
                 };
+
                 let node_name = if let Some(Value::StringValue(opt)) =
                     instruction.operands.get(1).and_then(|o| o.value.as_ref())
                 {
                     opt.clone()
                 } else {
-                    // TODO: Handle error.
-                    panic!();
+                    return Err(
+                        "Invalid add option - unable to find instruction operand at index 1".into(),
+                    );
                 };
 
                 self.state.current_options.push((line, node_name));
@@ -531,7 +549,7 @@ impl VirtualMachine {
                     self.execution_state = ExecutionState::Stopped;
                     let last_node = self.state.current_node_name.clone();
                     self.state = VmState::new();
-                    return Some(SuspendReason::DialogueComplete(last_node));
+                    return Ok(SuspendReason::DialogueComplete(last_node));
                 }
 
                 // Present the list of options to the user and let them pick
@@ -544,27 +562,27 @@ impl VirtualMachine {
                 // We can't continue until our client tell us which option to pick.
                 self.execution_state = ExecutionState::WaitingOnOptionSelection;
 
-                return Some(SuspendReason::Options(options));
+                return Ok(SuspendReason::Options(options));
             }
             OpCode::PushString => {
                 if let Some(Value::StringValue(val)) = &instruction.operands[0].value {
                     self.state.stack.push(YarnValue::Str(val.clone()));
                 } else {
-                    // TODO: Error: bad operand.
+                    return Err("Invalid push string - bad operand".into());
                 }
             }
             OpCode::PushFloat => {
                 if let Some(Value::FloatValue(val)) = &instruction.operands[0].value {
                     self.state.stack.push(YarnValue::Number(*val));
                 } else {
-                    // TODO: Error: bad operand.
+                    return Err("Invalid push float - bad operand".into());
                 }
             }
             OpCode::PushBool => {
                 if let Some(Value::BoolValue(val)) = &instruction.operands[0].value {
                     self.state.stack.push(YarnValue::Bool(*val));
                 } else {
-                    // TODO: Error: bad operand.
+                    return Err("Invalid push bool - bad operand".into());
                 }
             }
             OpCode::PushNull => {
@@ -579,11 +597,11 @@ impl VirtualMachine {
                             self.state.program_counter =
                                 self.find_instruction_point_for_label(label) - 1;
                         } else {
-                            // TODO: Error.
+                            return Err("Invalid jump if false - operand 0 has no value".into());
                         }
                     }
                 } else {
-                    // TODO: Error.
+                    return Err("Invalid jump if false - no items in the stack".into());
                 }
             }
             OpCode::Pop => {
@@ -604,6 +622,7 @@ impl VirtualMachine {
                         };
 
                         if expected_param_count != actual_param_count {
+                            // panic is ok here as this should be a "compile time" error.
                             panic!(
                                 "Function {} expected {}, but received {}",
                                 func_name, expected_param_count, actual_param_count,
@@ -628,10 +647,10 @@ impl VirtualMachine {
                             self.state.stack.push(result);
                         }
                     } else {
-                        // TODO: Error.
+                        return Err(VmError::MissingLibraryFunction(func_name.clone()));
                     }
                 } else {
-                    // TODO: Error.
+                    return Err("Invalid call func - index 0 has no value".into());
                 }
             }
             OpCode::PushVariable => {
@@ -643,7 +662,7 @@ impl VirtualMachine {
                         self.state.stack.push(YarnValue::Null);
                     }
                 } else {
-                    // TODO: Error.
+                    return Err("Invalid push variable - index 0 has no value".into());
                 }
             }
             OpCode::StoreVariable => {
@@ -651,23 +670,23 @@ impl VirtualMachine {
                     if let Some(val) = self.state.stack.last() {
                         self.variable_storage.insert(var_name.clone(), val.clone());
                     } else {
-                        // TODO: Error.
+                        return Err("Invalid push variable - no items in the stack".into());
                     }
                 } else {
-                    // TODO: Error.
+                    return Err("Invalid push variable - index 0 has no value".into());
                 }
             }
             OpCode::Stop => {
                 self.execution_state = ExecutionState::Stopped;
                 let last_node = self.state.current_node_name.clone();
                 self.state = VmState::new();
-                return Some(SuspendReason::DialogueComplete(last_node));
+                return Ok(SuspendReason::DialogueComplete(last_node));
             }
             OpCode::RunNode => {
                 if let Some(YarnValue::Str(node_name)) = self.state.stack.pop() {
                     let old_node = self.state.current_node_name.clone();
 
-                    self.set_node(&node_name);
+                    self.set_node(&node_name)?;
 
                     // Decrement program counter here, because it will
                     // be incremented when this function returns, and
@@ -676,17 +695,17 @@ impl VirtualMachine {
 
                     self.execution_state = ExecutionState::Suspended;
 
-                    return Some(SuspendReason::NodeChange {
+                    return Ok(SuspendReason::NodeChange {
                         start: node_name,
                         end: old_node,
                     });
                 } else {
-                    // TODO: Error!
+                    return Err("Invalid run node - no items in the stack".into());
                 }
             }
         }
 
-        None
+        Err(VmError::NoOperation)
     }
 
     fn find_instruction_point_for_label(&self, label: &str) -> isize {

@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -19,28 +20,21 @@ impl PlanStep {
     fn new(line: &str) -> Self {
         let mut split_line = line.splitn(2, ": ");
         match split_line.next() {
-            Some("line") => {
-                Self::Line(split_line.next().unwrap().to_owned())
-            }
-            Some("option") => {
-                Self::Option(split_line.next().unwrap().to_owned())
-            }
+            Some("line") => Self::Line(split_line.next().unwrap().to_owned()),
+            Some("option") => Self::Option(split_line.next().unwrap().to_owned()),
             Some("select") => {
-                let index: u32 = split_line.next()
-                    .and_then(|s| s.parse().ok())
-                    .unwrap();
+                let index: u32 = split_line.next().and_then(|s| s.parse().ok()).unwrap();
                 if index < 1 {
                     panic!("Select index must be 1 or greater.");
                 }
                 Self::Select(index - 1)
             }
-            Some("command") => {
-                Self::Command(split_line.next().unwrap().to_owned())
-            }
-            Some("stop") => {
-                Self::Stop
-            }
-            Some(step) => panic!("Could not parse test plan step \"{}\" in line \"{}\"", step, line),
+            Some("command") => Self::Command(split_line.next().unwrap().to_owned()),
+            Some("stop") => Self::Stop,
+            Some(step) => panic!(
+                "Could not parse test plan step \"{}\" in line \"{}\"",
+                step, line
+            ),
             None => panic!("Could not parse test plan step in line \"{}\"", line),
         }
     }
@@ -55,7 +49,8 @@ pub struct TestPlan {
 impl TestPlan {
     pub fn load(plan_path: &Path) -> io::Result<Self> {
         let plan_text = fs::read_to_string(plan_path)?;
-        let steps: Vec<_> = plan_text.lines()
+        let steps: Vec<_> = plan_text
+            .lines()
             .map(|line| line.trim_start())
             .filter(|line| !line.is_empty() && !line.starts_with('#'))
             .map(|line| PlanStep::new(line))
@@ -108,10 +103,8 @@ impl TestPlan {
     pub fn get_current_step(&self) -> Option<&PlanStep> {
         match self.next_step_index {
             0 => None,
-            i if i <= self.steps.len() => {
-                Some(&self.steps[self.next_step_index as usize - 1])
-            }
-            _ => Some(&PlanStep::Stop)
+            i if i <= self.steps.len() => Some(&self.steps[self.next_step_index as usize - 1]),
+            _ => Some(&PlanStep::Stop),
         }
     }
 }
@@ -130,17 +123,15 @@ impl PlanRunner {
         let proto_path = yarn_path.with_extension("yarn.yarnc");
 
         // Read the file's bytes and load a Program.
-        let proto_data = fs::read(&proto_path)
-            .unwrap();
-        let program = Program::decode(&*proto_data)
-            .unwrap();
+        let proto_data = fs::read(&proto_path).unwrap();
+        let program = Program::decode(&*proto_data).unwrap();
 
         // Load LineInfos from a csv file.
         let mut csv_path = proto_path;
         csv_path.set_extension("csv");
-        let mut csv_reader = csv::Reader::from_path(csv_path)
-            .unwrap();
-        let string_table: Vec<LineInfo> = csv_reader.deserialize()
+        let mut csv_reader = csv::Reader::from_path(csv_path).unwrap();
+        let string_table: Vec<LineInfo> = csv_reader
+            .deserialize()
             .map(|result| result.unwrap())
             .collect();
 
@@ -155,8 +146,7 @@ impl PlanRunner {
         );
 
         let plan_path = yarn_path.with_extension("testplan");
-        let plan = TestPlan::load(&plan_path)
-            .unwrap();
+        let plan = TestPlan::load(&plan_path).unwrap();
 
         Self {
             vm,
@@ -167,7 +157,9 @@ impl PlanRunner {
     }
 
     fn get_composed_text_for_line(&self, line: &Line) -> String {
-        let mut line_text = self.string_table.iter()
+        let mut line_text = self
+            .string_table
+            .iter()
             .find(|line_info| line_info.id == line.id)
             .map(|line_info| &line_info.text)
             .unwrap()
@@ -179,16 +171,23 @@ impl PlanRunner {
         yharnam::expand_format_functions(&line_text, &self.locale)
     }
 
-    pub fn run(&mut self) {
-        self.vm.set_node("Start");
+    pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
+        self.vm.set_node("Start")?;
+
         loop {
-            match self.vm.continue_dialogue() {
+            match self.vm.continue_dialogue()? {
                 SuspendReason::Line(line) => {
                     // Assert that the test plan expects this line.
                     self.plan.next();
                     let plan_step = self.plan.get_current_step().unwrap();
                     let line_text = self.get_composed_text_for_line(&line);
-                    assert!(matches!(plan_step, PlanStep::Line(plan_text) if *plan_text == line_text), "[{}] Expected the line {:?}, got \"{}\"", self.plan.next_step_index, plan_step, line_text);
+                    assert!(
+                        matches!(plan_step, PlanStep::Line(plan_text) if *plan_text == line_text),
+                        "[{}] Expected the line {:?}, got \"{}\"",
+                        self.plan.next_step_index,
+                        plan_step,
+                        line_text
+                    );
                 }
                 SuspendReason::Options(options) => {
                     // Assert that the test plan expects these options.
@@ -207,7 +206,12 @@ impl PlanRunner {
                     // Assert that the test plan expects this command.
                     self.plan.next();
                     let plan_step = self.plan.get_current_step().unwrap();
-                    assert!(matches!(plan_step, PlanStep::Command(plan_text) if *plan_text == command), "Expected the command {:?}, got \"{}\"", plan_step, command);
+                    assert!(
+                        matches!(plan_step, PlanStep::Command(plan_text) if *plan_text == command),
+                        "Expected the command {:?}, got \"{}\"",
+                        plan_step,
+                        command
+                    );
                 }
                 SuspendReason::NodeChange { .. } => {}
                 SuspendReason::DialogueComplete(_) => {
@@ -217,7 +221,12 @@ impl PlanRunner {
                     assert_eq!(*plan_step, PlanStep::Stop);
                     break;
                 }
+                SuspendReason::InvalidOption(option_name) => {
+                    panic!("Unexpected option name: {}", option_name);
+                }
             }
         }
+
+        Ok(())
     }
 }
