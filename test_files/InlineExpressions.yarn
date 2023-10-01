@@ -10,7 +10,6 @@ Number: {1}
 Expression: {1+1}
 String: {"string"}
 Bool: {true}
-Null: {null}
 Variable: {$var}
 
 // Lines with the expresion at the start (issue #243)
@@ -21,7 +20,6 @@ Variable: {$var}
 -> Shortcut Expression: {1+1}
 -> Shortcut String: {"string"}
 -> Shortcut Bool: {true}
--> Shortcut Null: {null}
 -> Shortcut Variable: {$var}
 
 // Commands
@@ -29,16 +27,7 @@ Variable: {$var}
 <<expression {1+1}>>
 <<string {"string"}>>
 <<bool {true}>>
-<<null {null}>>
 <<variable {$var}>>
-
-// Regular Options
-[[Regular Number: {1}|Destination]]
-[[Regular Expression: {1+1}|Destination]]
-[[Regular String: {"string"}|Destination]]
-[[Regular Bool: {true}|Destination]]
-[[Regular Null: {null}|Destination]]
-[[Regular Variable: {$var}|Destination]]
 
 ===
 title: Destination

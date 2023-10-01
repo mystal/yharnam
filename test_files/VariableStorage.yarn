@@ -14,13 +14,8 @@ title: Start
 <<call assert($foo == -1)>>
 
 // Test string storage
-<<set $foo to "foo">>
-<<call assert($foo == "foo")>>
-
-<<set $foo to null>>
-
-// Test null storage
-<<call assert($foo == null)>>
+<<set $foo_str to "foo">>
+<<call assert($foo_str == "foo")>>
 
 // Test immediate value arithmetic
 <<set $foo = 45>>
@@ -98,16 +93,16 @@ title: Start
 <<call assert($foounused == 1)>>
 
 // Testing string addition
-<<set $foo = "foo">>
-<<set $bar = "bar">>
-<<set $foobar = $foo + "bar">>
+<<set $foo_str = "foo">>
+<<set $bar_str = "bar">>
+<<set $foobar_str = $foo_str + "bar">>
 
 // "Test immediate string addition
-<<call assert($foobar == "foobar")>>
+<<call assert($foobar_str == "foobar")>>
 
-<<set $foobar = $foo + $bar>>
+<<set $foobar_str = $foo_str + $bar_str>>
 
 // "Test string addition
-<<call assert($foobar == "foobar")>>
+<<call assert($foobar_str == "foobar")>>
 
 ===

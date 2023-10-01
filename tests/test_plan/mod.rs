@@ -120,7 +120,7 @@ impl PlanRunner {
     pub fn new(yarn_path: &str) -> Self {
         let yarn_path = Path::new(yarn_path);
 
-        let proto_path = yarn_path.with_extension("yarn.yarnc");
+        let proto_path = yarn_path.with_extension("yarnc");
 
         // Read the file's bytes and load a Program.
         let proto_data = fs::read(&proto_path).unwrap();
@@ -128,7 +128,10 @@ impl PlanRunner {
 
         // Load LineInfos from a csv file.
         let mut csv_path = proto_path;
-        csv_path.set_extension("csv");
+        csv_path.set_file_name(format!(
+            "{}-Lines.csv",
+            csv_path.file_stem().unwrap().to_str().unwrap()
+        ));
         let mut csv_reader = csv::Reader::from_path(csv_path).unwrap();
         let string_table: Vec<LineInfo> = csv_reader
             .deserialize()
@@ -179,6 +182,9 @@ impl PlanRunner {
                 SuspendReason::Line(line) => {
                     // Assert that the test plan expects this line.
                     self.plan.next();
+
+                    println!("PARSING {:?}", line);
+
                     let plan_step = self.plan.get_current_step().unwrap();
                     let line_text = self.get_composed_text_for_line(&line);
                     assert!(

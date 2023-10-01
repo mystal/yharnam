@@ -64,7 +64,7 @@ fn test_commands() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_expressions() -> Result<(), Box<dyn Error>> {
-    let mut vm = set_up_vm("test_files/Expressions.yarn.yarnc");
+    let mut vm = set_up_vm("test_files/Expressions.yarnc");
 
     vm.set_node("Start")?;
     while vm.execution_state != ExecutionState::Stopped {
@@ -82,7 +82,7 @@ fn test_format_functions() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_functions() -> Result<(), Box<dyn Error>> {
-    let mut vm = set_up_vm("test_files/Functions.yarn.yarnc");
+    let mut vm = set_up_vm("test_files/Functions.yarnc");
 
     vm.set_node("Start")?;
     while vm.execution_state != ExecutionState::Stopped {
@@ -118,7 +118,7 @@ fn test_smileys() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_types() -> Result<(), Box<dyn Error>> {
-    let mut vm = set_up_vm("test_files/Types.yarn.yarnc");
+    let mut vm = set_up_vm("test_files/Types.yarnc");
 
     vm.set_node("Start")?;
     while vm.execution_state != ExecutionState::Stopped {
@@ -130,7 +130,7 @@ fn test_types() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_variable_storage() -> Result<(), Box<dyn Error>> {
-    let mut vm = set_up_vm("test_files/VariableStorage.yarn.yarnc");
+    let mut vm = set_up_vm("test_files/VariableStorage.yarnc");
 
     vm.set_node("Start")?;
     while vm.execution_state != ExecutionState::Stopped {

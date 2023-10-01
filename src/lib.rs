@@ -611,7 +611,10 @@ impl VirtualMachine {
                 // be on the stack. Pushes the function's return value,
                 // if it returns one.
                 if let Some(Value::StringValue(func_name)) = &instruction.operands[0].value {
-                    if let Some(function) = self.library.get(func_name) {
+                    // functions are, e.g. "Number.EqualTo", but we only want "EqualTo"
+                    let func_name = func_name.split(".").last().unwrap().to_owned();
+
+                    if let Some(function) = self.library.get(&func_name) {
                         let actual_param_count = self.state.stack.pop().unwrap().as_number() as u8;
 
                         // If a function is variadic, it takes as many parameters as it was given.

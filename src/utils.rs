@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::iter::Peekable;
 use std::str::Chars;
 
-use intl_pluralrules::{PluralCategory, PluralRules, PluralRuleType};
+use intl_pluralrules::{PluralCategory, PluralRuleType, PluralRules};
 use unic_langid::LanguageIdentifier;
 
 const FORMAT_FUNCTION_VALUE_PLACEHOLDER: &str = "<VALUE PLACEHOLDER>";
@@ -27,27 +27,38 @@ pub fn expand_format_functions(input: &str, locale_code: &str) -> String {
         let data_key = match function.kind {
             FormatFunctionKind::Select => &function.value,
             FormatFunctionKind::Plural => {
-                let value: f64 = function.value.parse()
-                    .unwrap_or_else(|_| panic!("Error while pluralising line '{}': '{}' is not a number", input, &function.value));
+                let value: f64 = function.value.parse().unwrap_or_else(|_| {
+                    panic!(
+                        "Error while pluralising line '{}': '{}' is not a number",
+                        input, &function.value
+                    )
+                });
                 let plural_case = cardinal_rules.select(value).unwrap();
                 get_plural_case_str(plural_case)
             }
             FormatFunctionKind::Ordinal => {
-                let value: f64 = function.value.parse()
-                    .unwrap_or_else(|_| panic!("Error while pluralising line '{}': '{}' is not a number", input, &function.value));
+                let value: f64 = function.value.parse().unwrap_or_else(|_| {
+                    panic!(
+                        "Error while pluralising line '{}': '{}' is not a number",
+                        input, &function.value
+                    )
+                });
                 let plural_case = ordinal_rules.select(value).unwrap();
                 get_plural_case_str(plural_case)
             }
         };
 
-        let mut replacement = function.data.get(data_key)
+        let mut replacement = function
+            .data
+            .get(data_key)
             .cloned()
             .unwrap_or_else(|| format!("<no replacement for {}>", data_key));
 
         // Insert the value if needed
         replacement = replacement.replace(FORMAT_FUNCTION_VALUE_PLACEHOLDER, &function.value);
 
-        line_with_replacements = line_with_replacements.replacen(&format!("{{{}}}", i), &replacement, 1);
+        line_with_replacements =
+            line_with_replacements.replacen(&format!("{{{}}}", i), &replacement, 1);
     }
 
     line_with_replacements
@@ -103,6 +114,7 @@ fn parse_format_functions(input: &str) -> (String, Vec<ParsedFormatFunction>) {
         // the start of a format function!
 
         // Structure of a format function:
+        // (I think this has changed in 2.x, so that the expectation is `value={$variable}`)
         // [ name "value" key1="value1" key2="value2" ]
 
         // Ensure that only valid function names are used
@@ -131,17 +143,16 @@ fn parse_format_functions(input: &str) -> (String, Vec<ParsedFormatFunction>) {
             let value = expect_string(&mut chars);
 
             if data.contains_key(&key) {
-                panic!("Duplicate value '{}' in format function inside line \"{}\"", &key, input)
+                panic!(
+                    "Duplicate value '{}' in format function inside line \"{}\"",
+                    &key, input
+                )
             }
 
             data.insert(key, value);
         }
 
-        let function = ParsedFormatFunction {
-            kind,
-            value,
-            data,
-        };
+        let function = ParsedFormatFunction { kind, value, data };
 
         // We now expect the end of this format function
         expect_character(&mut chars, ']');
@@ -164,13 +175,15 @@ fn expect_id(chars: &mut Peekable<Chars>) -> String {
     let mut id_string = String::new();
 
     // Read the first character, which must be a letter
-    let mut next_char = chars.next()
-        .unwrap();
+    let mut next_char = chars.next().unwrap();
 
     if next_char.is_alphabetic() || next_char == '_' {
         id_string.push(next_char);
     } else {
-        panic!("Expected an identifier inside a format function in line");
+        panic!(
+            "Expected an identifier inside a format function in line, found '{}'",
+            next_char
+        );
     }
 
     // Read zero or more letters, numbers, or underscores
@@ -222,7 +235,6 @@ fn expect_string(chars: &mut Peekable<Chars>) -> String {
         } else {
             string.push(next_char);
         }
-
     }
 
     string
@@ -235,7 +247,10 @@ fn expect_character(chars: &mut Peekable<Chars>, expected_char: char) {
 
     let next_char = chars.next();
     if next_char != Some(expected_char) {
-        panic!("Expected a {} inside a format function in line", expected_char);
+        panic!(
+            "Expected a {} inside a format function in line",
+            expected_char
+        );
     }
 }
 

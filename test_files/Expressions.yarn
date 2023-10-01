@@ -7,7 +7,7 @@ title: Start
 
 // Test unary operators
 
-<<call assert(!$test == false)>>
+// Not supported in yarn v2.3+: <<call assert(!$test == false)>>
 <<call assert(-$test == -1)>>
 <<call assert(-$test == 0 - 1)>>
 
@@ -23,6 +23,5 @@ title: Start
 // Test floating point math
 <<call assert(1 / 2 == 0.5)>>
 <<call assert(0.1 + 0.1 == 0.2)>>
-
 
 ===

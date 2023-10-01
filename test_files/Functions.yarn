@@ -12,5 +12,5 @@ title: Start
 
 // function calls as parameters
 
-<<call assert(last_value(1, last_value(2,3)) == 3)>>
+<<call assert(last_value(1, 2, last_value(4,2,3)) == 3)>>
 ===
