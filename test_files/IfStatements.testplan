@@ -2,4 +2,7 @@ line: Player: Hey, Sally.
 line: Sally: Oh! Hi.
 line: Sally: You snuck up on me.
 line: Sally: Don't do that.
+line: The following should show when its false
+line: Player: Hey.
+line: Sally: Hi.
 stop: 

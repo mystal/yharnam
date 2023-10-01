@@ -9,4 +9,16 @@ title: Start
     Player: Hey. #line:a8e70c
     Sally: Hi. #line:305cde
 <<endif>>
+
+The following should show when its false
+
+<<if false>>
+    Player: Hey, Sally. #line:794946
+    Sally: Oh! Hi. #line:2dc39c
+    Sally: You snuck up on me. #line:34de2e
+    Sally: Don't do that. #line:dcc2bd
+<<else>>
+    Player: Hey. #line:a8e70d
+    Sally: Hi. #line:305cdf
+<<endif>>
 ===
