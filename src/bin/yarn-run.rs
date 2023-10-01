@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Start executing.
         loop {
             match vm.continue_dialogue()? {
-                // Err(e) => return Err(Box::new(e)),
+                SuspendReason::Nop => {}
                 SuspendReason::Line(line) => {
                     let text = string_table
                         .iter()

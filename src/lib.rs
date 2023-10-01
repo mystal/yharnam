@@ -145,6 +145,7 @@ pub enum SuspendReason {
     NodeChange { start: String, end: String },
     DialogueComplete(String),
     InvalidOption(String),
+    Nop,
 }
 
 pub struct VmState {
@@ -523,6 +524,23 @@ impl VirtualMachine {
                             substitutions[expression_index] = substitution;
                         }
                     }
+
+                    // check whether we have a condition on this option
+                    match instruction.operands.get(3).and_then(|o| o.value.as_ref()) {
+                        Some(Value::BoolValue(true)) => match self.state.stack.pop() {
+                            Some(YarnValue::Bool(false)) => {
+                                // Choice is not available
+                                return Ok(SuspendReason::Nop);
+                            }
+                            _ => {
+                                // Choice is available
+                            }
+                        },
+                        _ => {
+                            // Choice does not have a condition
+                        }
+                    }
+
                     Line::new(opt.clone(), substitutions)
                 } else {
                     return Err(

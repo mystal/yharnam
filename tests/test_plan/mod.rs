@@ -179,6 +179,7 @@ impl PlanRunner {
 
         loop {
             match self.vm.continue_dialogue()? {
+                SuspendReason::Nop => {}
                 SuspendReason::Line(line) => {
                     // Assert that the test plan expects this line.
                     self.plan.next();
