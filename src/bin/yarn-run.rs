@@ -80,7 +80,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let mut selection = String::new();
                     io::stdin().read_line(&mut selection)?;
                     let selection: u32 = selection.trim().parse()?;
-                    vm.set_selected_option(selection);
+                    vm.set_selected_option(selection)?;
                 }
                 SuspendReason::Command(command_text) => {
                     println!("== Command: {} ==", command_text);

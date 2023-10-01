@@ -375,18 +375,15 @@ impl VirtualMachine {
         }
     }
 
-    pub fn set_selected_option(&mut self, selected_option_id: u32) {
+    pub fn set_selected_option(&mut self, selected_option_id: u32) -> Result<(), VmError> {
         let selected_option_id = selected_option_id as usize;
 
         if self.execution_state != ExecutionState::WaitingOnOptionSelection {
-            panic!();
-            // throw new DialogueException(@"SetSelectedOption was called, but Dialogue wasn't waiting for a selection.
-            // This method should only be called after the Dialogue is waiting for the user to select an option.");
+            return Err("set_selected_option was called, but Dialogue wasn't waiting for a selection. This method should only be called after the Dialogue is waiting for the user to select an option.".into());
         }
 
         if selected_option_id >= self.state.current_options.len() {
-            panic!();
-            // throw new ArgumentOutOfRangeException($"{selectedOptionID} is not a valid option ID (expected a number between 0 and {state.currentOptions.Count-1}.");
+            return Err(format!("{selected_option_id} is not a valid option ID (expected a number between 0 and {}.", self.state.current_options.len() - 1).into());
         }
 
         // We now know what number option was selected; push the
@@ -403,6 +400,8 @@ impl VirtualMachine {
         self.execution_state = ExecutionState::Suspended;
 
         debug!("Selected option: {}", selected_option_id);
+
+        Ok(())
     }
 
     fn run_instruction(

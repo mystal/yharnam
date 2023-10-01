@@ -198,7 +198,7 @@ impl PlanRunner {
                         assert_eq!(option_text, *plan_option);
                     }
                     match plan_step {
-                        PlanStep::Select(i) => self.vm.set_selected_option(*i),
+                        PlanStep::Select(i) => self.vm.set_selected_option(*i)?,
                         step => panic!("Expected PlanStep::Select, got {:?}", step),
                     }
                 }
