@@ -363,6 +363,10 @@ impl VirtualMachine {
     // Either Line, Options, Command, NodeStart?, NodeEnd?, DialogeEnd
     pub fn continue_dialogue(&mut self) -> Result<SuspendReason, VmError> {
         if self.state.current_node_name.is_empty() {
+            if self.execution_state == ExecutionState::Stopped {
+                return Ok(SuspendReason::DialogueComplete("".into()));
+            }
+
             return Err("Cannot continue running dialogue. No node has been selected.".into());
         }
 
