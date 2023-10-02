@@ -44,6 +44,7 @@ option: Mae: / \
 option: Mae: \ /
 option: Mae: ~~
 
+tags: lastline
 select: 1
 
 line: Separating the option groups here.
@@ -71,4 +72,5 @@ option: Mae: / \
 option: Mae: \ /
 option: Mae: ~~
 
+tags: lastline
 select: 1

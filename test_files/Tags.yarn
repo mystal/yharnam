@@ -1,0 +1,9 @@
+title: Start
+---
+// Tests that tags are correctly parsed from the Metadata CSV file
+
+This line has no tags
+This line has one tag #tag
+This line has three tags #tag1 #tag2 #tag3
+This line has one tag with a comma in the tag #tag1,tag2
+===

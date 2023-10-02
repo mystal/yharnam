@@ -1,0 +1,7 @@
+line: This line has no tags
+line: This line has one tag
+tags: tag
+line: This line has three tags
+tags: tag1 tag2 tag3
+line: This line has one tag with a comma in the tag
+tags: tag1,tag2

@@ -70,8 +70,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     let tags = tags_table
                         .iter()
-                        .find(|line_info| line_info.id == line.id)
-                        .map(|line_info| &line_info.tags)
+                        .find(|metadata_info| metadata_info.id == line.id)
+                        .map(|metadata_info| &metadata_info.tags)
                         .cloned()
                         .unwrap_or_else(|| Vec::new());
 

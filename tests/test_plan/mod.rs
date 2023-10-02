@@ -10,6 +10,7 @@ use yharnam::*;
 #[derive(Debug, PartialEq, Eq)]
 pub enum PlanStep {
     Line(String),
+    Tags(Vec<String>),
     Option(String),
     Select(u32),
     Command(String),
@@ -21,6 +22,13 @@ impl PlanStep {
         let mut split_line = line.splitn(2, ": ");
         match split_line.next() {
             Some("line") => Self::Line(split_line.next().unwrap().to_owned()),
+            Some("tags") => Self::Tags(
+                split_line
+                    .collect::<String>()
+                    .split(" ")
+                    .map(|item| item.to_owned())
+                    .collect::<Vec<String>>(),
+            ),
             Some("option") => Self::Option(split_line.next().unwrap().to_owned()),
             Some("select") => {
                 let index: u32 = split_line.next().and_then(|s| s.parse().ok()).unwrap();
@@ -112,6 +120,7 @@ impl TestPlan {
 pub struct PlanRunner {
     vm: VirtualMachine,
     string_table: Vec<LineInfo>,
+    metadata_table: Vec<MetadataInfo>,
     plan: TestPlan,
     locale: String,
 }
@@ -127,13 +136,27 @@ impl PlanRunner {
         let program = Program::decode(&*proto_data).unwrap();
 
         // Load LineInfos from a csv file.
-        let mut csv_path = proto_path;
+        let mut csv_path = proto_path.clone();
         csv_path.set_file_name(format!(
             "{}-Lines.csv",
             csv_path.file_stem().unwrap().to_str().unwrap()
         ));
-        let mut csv_reader = csv::Reader::from_path(csv_path).unwrap();
-        let string_table: Vec<LineInfo> = csv_reader
+        let string_table: Vec<LineInfo> = csv::Reader::from_path(csv_path)
+            .unwrap()
+            .deserialize()
+            .map(|result| result.unwrap())
+            .collect();
+
+        // Load Metadata from a csv file.
+        let mut csv_path = proto_path;
+        csv_path.set_file_name(format!(
+            "{}-Metadata.csv",
+            csv_path.file_stem().unwrap().to_str().unwrap()
+        ));
+        let metadata_table: Vec<MetadataInfo> = csv::ReaderBuilder::new()
+            .flexible(true)
+            .from_path(csv_path)
+            .unwrap()
             .deserialize()
             .map(|result| result.unwrap())
             .collect();
@@ -154,9 +177,19 @@ impl PlanRunner {
         Self {
             vm,
             string_table,
+            metadata_table,
             plan,
             locale: "en".to_string(),
         }
+    }
+
+    fn get_tags_for_line(&self, line: &Line) -> Vec<String> {
+        self.metadata_table
+            .iter()
+            .find(|metadata_info| metadata_info.id == line.id)
+            .map(|metadata_info| &metadata_info.tags)
+            .cloned()
+            .unwrap_or_else(|| Vec::new())
     }
 
     fn get_composed_text_for_line(&self, line: &Line) -> String {
@@ -184,10 +217,9 @@ impl PlanRunner {
                     // Assert that the test plan expects this line.
                     self.plan.next();
 
-                    println!("PARSING {:?}", line);
-
                     let plan_step = self.plan.get_current_step().unwrap();
                     let line_text = self.get_composed_text_for_line(&line);
+
                     assert!(
                         matches!(plan_step, PlanStep::Line(plan_text) if *plan_text == line_text),
                         "[{}] Expected the line {:?}, got \"{}\"",
@@ -195,6 +227,32 @@ impl PlanRunner {
                         plan_step,
                         line_text
                     );
+
+                    let tags = self.get_tags_for_line(&line);
+                    if !tags.is_empty() {
+                        self.plan.next();
+
+                        let plan_step = self.plan.get_current_step().unwrap();
+                        if let PlanStep::Tags(found_tags) = plan_step {
+                            assert!(
+                                tags.iter().zip(found_tags).all(|(a, b)| a == b),
+                                "[{}] Expected tag step \"{plan_step:?}\" but found tags: {tags:?}",
+                                self.plan.next_step_index
+                            )
+                        } else {
+                            panic!(
+                                "[{}] Expected tag step with tags: {tags:?}, bot got \"{plan_step:?}\"",
+                                self.plan.next_step_index
+                            )
+                        }
+
+                        assert!(
+                            matches!(plan_step, PlanStep::Tags(found_tags) if *found_tags == tags),
+                            "[{}] Expected tag step {:?}, got \"{tags:?}\"",
+                            self.plan.next_step_index,
+                            plan_step,
+                        );
+                    }
                 }
                 SuspendReason::Options(options) => {
                     // Assert that the test plan expects these options.

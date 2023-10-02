@@ -117,6 +117,12 @@ fn test_smileys() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn test_tags() -> Result<(), Box<dyn Error>> {
+    let mut runner = test_plan::PlanRunner::new("test_files/Tags.yarn");
+    runner.run()
+}
+
+#[test]
 fn test_types() -> Result<(), Box<dyn Error>> {
     let mut vm = set_up_vm("test_files/Types.yarnc");
 

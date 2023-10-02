@@ -13,6 +13,7 @@ option: Shortcut Expression: 2
 option: Shortcut String: string
 option: Shortcut Bool: True
 option: Shortcut Variable: variable
+tags: lastline
 select: 1
 
 # commands
