@@ -33,7 +33,7 @@ fn set_up_vm(yarnc_path: &str) -> VirtualMachine {
     let mut vm = VirtualMachine::new(program);
     vm.library.insert(
         "assert".to_string(),
-        FunctionInfo::new(1, &|parameters: &[YarnValue]| {
+        FunctionInfo::new(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
             if !parameters[0].as_bool() {
                 assert!(false, "Assertion failed");
             }
@@ -41,14 +41,14 @@ fn set_up_vm(yarnc_path: &str) -> VirtualMachine {
     );
     vm.library.insert(
         "add_three_operands".to_string(),
-        FunctionInfo::new_returning(3, &|parameters: &[YarnValue]| {
+        FunctionInfo::new_returning(3, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
             let res = parameters[0].add(&parameters[1]).unwrap();
             res.add(&parameters[2]).unwrap()
         }),
     );
     vm.library.insert(
         "last_value".to_string(),
-        FunctionInfo::new_returning(-1, &|parameters: &[YarnValue]| {
+        FunctionInfo::new_returning(-1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
             parameters.last().unwrap().clone()
         }),
     );
@@ -144,4 +144,10 @@ fn test_variable_storage() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+#[test]
+fn test_visited_counter() -> Result<(), Box<dyn Error>> {
+    let mut runner = test_plan::PlanRunner::new("test_files/VisitedCounter.yarnc");
+    runner.run()
 }

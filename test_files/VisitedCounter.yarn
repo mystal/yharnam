@@ -1,0 +1,29 @@
+title: Start
+---
+// Function tests
+
+// "add_three_operands" is a function that adds three operands together
+<<declare $has_visited = false>>
+<<set $has_visited to visited("Other")>>
+<<declare $visited_count = 0>>
+<<set $visited_count to visited_count("Other")>>
+
+<<if $has_visited>>
+Has visited Other ({$visited_count})
+<<else>>
+Has not visited Other ({$visited_count})
+<<endif>>
+
+<<jump Other>>
+===
+title: Other
+---
+<<set $has_visited to visited("Other")>>
+<<set $visited_count to visited_count("Other")>>
+
+<<if $has_visited>>
+Has visited Other ({$visited_count})
+<<else>>
+Has not visited Other ({$visited_count})
+<<endif>>
+===
