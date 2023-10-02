@@ -26,6 +26,15 @@ pub struct LineInfo {
     pub line_number: u32,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct MetadataInfo {
+    pub id: String,
+    pub node: String,
+    #[serde(rename = "lineNumber")]
+    pub line_number: u32,
+    pub tags: Vec<String>,
+}
+
 /// A line of dialogue, sent from the [`VirtualMachine`] to the game.
 ///
 /// When the game receives a `Line`, it should do the following things to prepare the line for

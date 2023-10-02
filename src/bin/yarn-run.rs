@@ -27,16 +27,27 @@ fn main() -> Result<(), Box<dyn Error>> {
     // println!("{:#?}", &program);
 
     // Load LineInfos from a csv file.
-    let mut csv_path = proto_path;
-
-    csv_path.set_file_name(format!(
+    let mut lines_csv_path = proto_path.clone();
+    lines_csv_path.set_file_name(format!(
         "{}-Lines.csv",
-        csv_path.file_stem().unwrap().to_str().unwrap()
+        lines_csv_path.file_stem().unwrap().to_str().unwrap()
     ));
-    println!("Opening {:?}", csv_path);
 
-    let mut csv_reader = csv::Reader::from_path(csv_path)?;
-    let string_table: Vec<LineInfo> = csv_reader
+    let string_table: Vec<LineInfo> = csv::Reader::from_path(lines_csv_path)?
+        .deserialize()
+        .map(|result| result.unwrap())
+        .collect();
+
+    // Load tags from a csv file.
+    let mut tags_csv_path = proto_path;
+    tags_csv_path.set_file_name(format!(
+        "{}-Metadata.csv",
+        tags_csv_path.file_stem().unwrap().to_str().unwrap()
+    ));
+
+    let tags_table: Vec<MetadataInfo> = csv::ReaderBuilder::new()
+        .flexible(true)
+        .from_path(tags_csv_path)?
         .deserialize()
         .map(|result| result.unwrap())
         .collect();
@@ -56,8 +67,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                         .iter()
                         .find(|line_info| line_info.id == line.id)
                         .map(|line_info| &line_info.text);
+
+                    let tags = tags_table
+                        .iter()
+                        .find(|line_info| line_info.id == line.id)
+                        .map(|line_info| &line_info.tags)
+                        .cloned()
+                        .unwrap_or_else(|| Vec::new());
+
                     if let Some(text) = text {
-                        println!("{}", text);
+                        println!("{text}, tagged {tags:?}");
                     } else {
                         // TODO: Could not find line, handle error.
                     }
