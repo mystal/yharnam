@@ -36,4 +36,20 @@ random_test true
 random_test false
 <<endif>>
 
+-> Option 0
+    This line should not appear
+-> Option 1 <<if random_test(0.5)>>
+    This line should not appear
+-> Option 2 <<if random_test(0.5)>>
+    This line should not appear
+-> Option 3 <<if random_test(0.5)>>
+    This line should not appear
+-> Option 4 <<if random_test(0.5)>>
+    This line should not appear
+-> Option 5 <<if random_test(0.5)>>
+    Option 5 line should appear
+-> Option 6
+    This line should not appear
+
+This is the end
 ===

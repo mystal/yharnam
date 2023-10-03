@@ -16,3 +16,11 @@ line: random_test false
 line: random_test false
 line: random_test true
 line: random_test false
+
+option: Option 0
+option: Option 1
+option: Option 5
+option: Option 6
+select: 3
+line: Option 5 line should appear
+line: This is the end
