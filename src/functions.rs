@@ -129,7 +129,7 @@ pub fn add_visited_functions(library: &mut HashMap<String, FunctionInfo>) {
         FunctionInfo::new_returning(1, &|vm: &mut VirtualMachine, parameters: &[YarnValue]| {
             (*vm.visit_counter
                 .get(&parameters[0].as_string())
-                .unwrap_or_else(|| &0)
+                .unwrap_or(&0)
                 > 0)
             .into()
         }),
@@ -141,7 +141,7 @@ pub fn add_visited_functions(library: &mut HashMap<String, FunctionInfo>) {
             YarnValue::Number(
                 *vm.visit_counter
                     .get(&parameters[0].as_string())
-                    .unwrap_or_else(|| &0) as f32,
+                    .unwrap_or(&0) as f32,
             )
         }),
     );

@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         .find(|metadata_info| metadata_info.id == line.id)
                         .map(|metadata_info| &metadata_info.tags)
                         .cloned()
-                        .unwrap_or_else(|| Vec::new());
+                        .unwrap_or_default();
 
                     if let Some(text) = text {
                         println!("{text}, tagged {tags:?}");

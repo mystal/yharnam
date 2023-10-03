@@ -118,7 +118,7 @@ message Instruction {
         
         // Calls a function in the client. Pops as many arguments as the
         // client indicates the function receives, and the result (if any)
-        // is pushed to the stack.		
+        // is pushed to the stack.
         // opA = string: name of the function
         CALL_FUNC = 12; 
         

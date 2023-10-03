@@ -568,7 +568,7 @@ impl VirtualMachine {
                 // if it returns one.
                 if let Some(Value::StringValue(func_name)) = &instruction.operands[0].value {
                     // functions are, e.g. "Number.EqualTo", but we only want "EqualTo"
-                    let func_name = func_name.split(".").last().unwrap().to_owned();
+                    let func_name = func_name.split('.').last().unwrap().to_owned();
 
                     // We need to `take` here as we borrow "self" when getting the FunctionInfo and
                     // therefore can't pass a mutable borrow into `function.func.call()`.
