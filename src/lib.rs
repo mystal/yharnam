@@ -3,6 +3,7 @@
 use std::{collections::HashMap, convert::TryInto};
 
 use errors::VmError;
+use functions::{add_logic_functions, add_mathetmatical_functions, add_visited_functions};
 use log::*;
 use serde::Deserialize;
 
@@ -13,6 +14,7 @@ pub mod yarn_proto {
 }
 
 pub mod errors;
+mod functions;
 mod utils;
 mod value;
 
@@ -191,139 +193,11 @@ pub struct VirtualMachine {
 impl VirtualMachine {
     pub fn new(program: Program) -> Self {
         let mut library = HashMap::new();
-        library.insert(
-            "Add".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                parameters[0].add(&parameters[1]).unwrap()
-            }),
-        );
 
-        library.insert(
-            "Minus".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                parameters[0].sub(&parameters[1]).unwrap()
-            }),
-        );
+        add_mathetmatical_functions(&mut library);
+        add_logic_functions(&mut library);
+        add_visited_functions(&mut library);
 
-        library.insert(
-            "UnaryMinus".to_string(),
-            FunctionInfo::new_returning(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                parameters[0].neg()
-            }),
-        );
-
-        library.insert(
-            "Divide".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                parameters[0].div(&parameters[1]).unwrap()
-            }),
-        );
-
-        library.insert(
-            "Multiply".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                parameters[0].mul(&parameters[1]).unwrap()
-            }),
-        );
-
-        library.insert(
-            "Modulo".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                parameters[0].rem(&parameters[1]).unwrap()
-            }),
-        );
-
-        library.insert(
-            "EqualTo".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0] == parameters[1]).into()
-            }),
-        );
-
-        library.insert(
-            "NotEqualTo".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0] != parameters[1]).into()
-            }),
-        );
-
-        library.insert(
-            "GreaterThan".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0] > parameters[1]).into()
-            }),
-        );
-
-        library.insert(
-            "GreaterThanOrEqualTo".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0] >= parameters[1]).into()
-            }),
-        );
-
-        library.insert(
-            "LessThan".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0] < parameters[1]).into()
-            }),
-        );
-
-        library.insert(
-            "LessThanOrEqualTo".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0] <= parameters[1]).into()
-            }),
-        );
-
-        library.insert(
-            "And".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0].as_bool() && parameters[1].as_bool()).into()
-            }),
-        );
-
-        library.insert(
-            "Or".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0].as_bool() || parameters[1].as_bool()).into()
-            }),
-        );
-
-        library.insert(
-            "Xor".to_string(),
-            FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (parameters[0].as_bool() ^ parameters[1].as_bool()).into()
-            }),
-        );
-
-        library.insert(
-            "Not".to_string(),
-            FunctionInfo::new_returning(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (!parameters[0].as_bool()).into()
-            }),
-        );
-
-        library.insert(
-            "visited".to_string(),
-            FunctionInfo::new_returning(1, &|vm: &VirtualMachine, parameters: &[YarnValue]| {
-                (*vm.visit_counter
-                    .get(&parameters[0].as_string())
-                    .unwrap_or_else(|| &0)
-                    > 0)
-                .into()
-            }),
-        );
-
-        library.insert(
-            "visited_count".to_string(),
-            FunctionInfo::new_returning(1, &|vm: &VirtualMachine, parameters: &[YarnValue]| {
-                YarnValue::Number(
-                    *vm.visit_counter
-                        .get(&parameters[0].as_string())
-                        .unwrap_or_else(|| &0) as f32,
-                )
-            }),
-        );
 
         Self {
             state: VmState::new(),
