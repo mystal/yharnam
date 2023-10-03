@@ -166,6 +166,16 @@ pub fn add_number_utility_functions(library: &mut HashMap<String, FunctionInfo>)
     );
 
     library.insert(
+        "int".to_string(),
+        FunctionInfo::new_returning(1, &|_vm: &mut VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            let sign = number.signum();
+
+            YarnValue::Number(number.abs().floor() * sign)
+        }),
+    );
+
+    library.insert(
         "decimal".to_string(),
         FunctionInfo::new_returning(1, &|_vm: &mut VirtualMachine, parameters: &[YarnValue]| {
             let number = parameters[0].as_number();

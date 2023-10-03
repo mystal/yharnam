@@ -1,10 +1,19 @@
 line: floor 1.1 = 1
 line: floor 2.0 = 2
+line: floor -1.1 = -2
+line: floor -2.0 = -2
 
 line: ceil 1.1 = 2
 line: ceil 2.0 = 2
+line: ceil -1.1 = -1
+line: ceil -2.0 = -2
 
-# float precision makes these tricky without further functions, skipping tests for now
+line: int 1.1 = 1
+line: int 2.0 = 2
+line: int -1.1 = -1
+line: int -2.0 = -2
+
+# float precision makes these tricky, skipping tests for now
 # line: decimal 1.353 = 0.353
 # line: decimal -1.554 = 0.554
 
