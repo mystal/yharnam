@@ -14,4 +14,12 @@ dec 10.0 = {dec(10.0)}
 dec 10.1 = {dec(10.1)}
 inc 11.0 = {inc(11.0)}
 inc 10.1 = {inc(10.1)}
+
+round 10.1 = {round(10.1)}
+round 10.9 = {round(10.9)}
+round 10.5 = {round(10.5)}
+
+round_places 10.155 to 2 places = {round_places(10.155, 2)}
+round_places 10.955 to 0 places = {round_places(10.955, 0)}
+round_places 10.50011 to 4 places = {round_places(10.50011, 4)}
 ===

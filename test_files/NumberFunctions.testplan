@@ -13,3 +13,11 @@ line: dec 10.1 = 10
 
 line: inc 11.0 = 12
 line: inc 10.1 = 11
+
+line: round 10.1 = 10
+line: round 10.9 = 11
+line: round 10.5 = 11
+
+line: round_places 10.155 to 2 places = 10.16
+line: round_places 10.955 to 0 places = 11
+line: round_places 10.50011 to 4 places = 10.5001

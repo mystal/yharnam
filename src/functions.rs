@@ -196,6 +196,25 @@ pub fn add_number_utility_functions(library: &mut HashMap<String, FunctionInfo>)
             })
         }),
     );
+
+    library.insert(
+        "round".to_string(),
+        FunctionInfo::new_returning(1, &|_vm: &mut VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            YarnValue::Number(number.round())
+        }),
+    );
+
+    library.insert(
+        "round_places".to_string(),
+        FunctionInfo::new_returning(2, &|_vm: &mut VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            let num_places = parameters[1].as_number() as u32;
+            let multiplier = 10u32.pow(num_places) as f32;
+
+            YarnValue::Number((number * multiplier).round() / multiplier)
+        }),
+    );
 }
 
 /// Adds random number functions
