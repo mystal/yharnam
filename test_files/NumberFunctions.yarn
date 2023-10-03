@@ -1,0 +1,17 @@
+title: Start
+---
+floor 1.1 = {floor(1.1)}
+floor 2.0 = {floor(2.0)}
+
+ceil 1.1 = {ceil(1.1)}
+ceil 2.0 = {ceil(2.0)}
+
+// float precision makes these tricky without further functions, skipping tests for now
+// decimal 1.353 = {decimal(1.353)}
+// decimal -1.554 = {decimal(-1.554)}
+
+dec 10.0 = {dec(10.0)}
+dec 10.1 = {dec(10.1)}
+inc 11.0 = {inc(11.0)}
+inc 10.1 = {inc(10.1)}
+===

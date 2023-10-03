@@ -164,7 +164,7 @@ impl PlanRunner {
         let mut vm = VirtualMachine::new(program);
         vm.library.insert(
             "assert".to_string(),
-            FunctionInfo::new(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
+            FunctionInfo::new(1, &|_vm: &mut VirtualMachine, parameters: &[YarnValue]| {
                 if !parameters[0].as_bool() {
                     assert!(false, "Assertion failed");
                 }
