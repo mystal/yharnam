@@ -33,4 +33,16 @@ round_places 10.155 to 2 places = {round_places(10.155, 2)}
 round_places 10.955 to 0 places = {round_places(10.955, 0)}
 round_places 10.50011 to 4 places = {round_places(10.50011, 4)}
 
+clamp 1 (2->4) = {clamp(1, 2, 4)}
+clamp 2 (2->4) = {clamp(2, 2, 4)}
+clamp 3 (2->4) = {clamp(3, 2, 4)}
+clamp 4 (2->4) = {clamp(4, 2, 4)}
+clamp 5 (2->4) = {clamp(5, 2, 4)}
+
+clampf 1.0 (2.1->2.9) = {clamp(1.0, 2.1, 2.9)}
+clampf 2.1 (2.1->2.9) = {clamp(2.1, 2.1, 2.9)}
+clampf 2.4 (2.1->2.9) = {clamp(2.4, 2.1, 2.9)}
+clampf 2.9 (2.1->2.9) = {clamp(2.9, 2.1, 2.9)}
+clampf 3.0 (2.1->2.9) = {clamp(3.0, 2.1, 2.9)}
+
 ===

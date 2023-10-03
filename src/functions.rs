@@ -225,6 +225,16 @@ pub fn add_number_utility_functions(library: &mut HashMap<String, FunctionInfo>)
             YarnValue::Number((number * multiplier).round() / multiplier)
         }),
     );
+
+    library.insert(
+        "clamp".to_string(),
+        FunctionInfo::new_returning(3, &|_vm: &mut VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            let clamp_min = parameters[1].as_number();
+            let clamp_max = parameters[2].as_number();
+            YarnValue::Number(number.clamp(clamp_min, clamp_max))
+        }),
+    );
 }
 
 /// Adds random number functions

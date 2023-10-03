@@ -30,3 +30,15 @@ line: round 10.5 = 11
 line: round_places 10.155 to 2 places = 10.16
 line: round_places 10.955 to 0 places = 11
 line: round_places 10.50011 to 4 places = 10.5001
+
+line: clamp 1 (2->4) = 2
+line: clamp 2 (2->4) = 2
+line: clamp 3 (2->4) = 3
+line: clamp 4 (2->4) = 4
+line: clamp 5 (2->4) = 4
+
+line: clampf 1.0 (2.1->2.9) = 2.1
+line: clampf 2.1 (2.1->2.9) = 2.1
+line: clampf 2.4 (2.1->2.9) = 2.4
+line: clampf 2.9 (2.1->2.9) = 2.9
+line: clampf 3.0 (2.1->2.9) = 2.9
