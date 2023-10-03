@@ -3,7 +3,7 @@
 use std::{collections::HashMap, convert::TryInto};
 
 use errors::VmError;
-use functions::{add_logic_functions, add_mathetmatical_functions, add_visited_functions};
+use functions::{add_logic_functions, add_mathematical_functions, add_visited_functions};
 use log::*;
 use serde::Deserialize;
 
@@ -194,7 +194,7 @@ impl VirtualMachine {
     pub fn new(program: Program) -> Self {
         let mut library = HashMap::new();
 
-        add_mathetmatical_functions(&mut library);
+        add_mathematical_functions(&mut library);
         add_logic_functions(&mut library);
         add_visited_functions(&mut library);
 

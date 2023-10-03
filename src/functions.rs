@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use crate::{FunctionInfo, VirtualMachine, YarnValue};
 
-/// Adds mathemtical functions such as addition, subtraction and so on to the library.
-pub fn add_mathetmatical_functions(library: &mut HashMap<String, FunctionInfo>) {
+/// Adds mathematical functions such as addition, subtraction and so on to the library.
+pub fn add_mathematical_functions(library: &mut HashMap<String, FunctionInfo>) {
     library.insert(
         "Add".to_string(),
         FunctionInfo::new_returning(2, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
@@ -143,6 +143,57 @@ pub fn add_visited_functions(library: &mut HashMap<String, FunctionInfo>) {
                     .get(&parameters[0].as_string())
                     .unwrap_or_else(|| &0) as f32,
             )
+        }),
+    );
+}
+
+/// Adds function
+pub fn add_number_utility_functions(library: &mut HashMap<String, FunctionInfo>) {
+    library.insert(
+        "floor".to_string(),
+        FunctionInfo::new_returning(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            YarnValue::Number(number.floor())
+        }),
+    );
+
+    library.insert(
+        "ceil".to_string(),
+        FunctionInfo::new_returning(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            YarnValue::Number(number.ceil())
+        }),
+    );
+
+    library.insert(
+        "decimal".to_string(),
+        FunctionInfo::new_returning(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            YarnValue::Number(number.fract().abs())
+        }),
+    );
+
+    library.insert(
+        "dec".to_string(),
+        FunctionInfo::new_returning(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            YarnValue::Number(if number.floor() == number {
+                number - 1.
+            } else {
+                number.floor()
+            })
+        }),
+    );
+
+    library.insert(
+        "inc".to_string(),
+        FunctionInfo::new_returning(1, &|_vm: &VirtualMachine, parameters: &[YarnValue]| {
+            let number = parameters[0].as_number();
+            YarnValue::Number(if number.ceil() == number {
+                number + 1.
+            } else {
+                number.ceil()
+            })
         }),
     );
 }
