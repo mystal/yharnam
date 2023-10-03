@@ -111,6 +111,13 @@ fn test_inline_expressions() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+fn test_random_functions() -> Result<(), Box<dyn Error>> {
+    let mut runner = test_plan::PlanRunner::new("test_files/RandomFunctions.yarn");
+    runner.get_vm().set_random_seed(12345);
+    runner.run()
+}
+
+#[test]
 fn test_shortcut_options() -> Result<(), Box<dyn Error>> {
     let mut runner = test_plan::PlanRunner::new("test_files/ShortcutOptions.yarn");
     runner.run()

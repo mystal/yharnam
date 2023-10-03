@@ -3,9 +3,18 @@
 use std::{collections::HashMap, convert::TryInto};
 
 use errors::VmError;
-use functions::{add_logic_functions, add_mathematical_functions, add_visited_functions};
+use functions::{
+    add_logic_functions, add_mathematical_functions, add_number_utility_functions,
+    add_visited_functions,
+};
 use log::*;
 use serde::Deserialize;
+
+#[cfg(feature = "random")]
+use rand::{rngs::StdRng, SeedableRng};
+
+#[cfg(feature = "random")]
+use functions::add_random_functions;
 
 pub use crate::{utils::*, value::YarnValue, yarn_proto::Program};
 
@@ -82,8 +91,8 @@ impl YarnOption {
     }
 }
 
-pub type ReturningFunction = dyn Fn(&VirtualMachine, &[YarnValue]) -> YarnValue + Send + Sync;
-pub type Function = dyn Fn(&VirtualMachine, &[YarnValue]) + Send + Sync;
+pub type ReturningFunction = dyn Fn(&mut VirtualMachine, &[YarnValue]) -> YarnValue + Send + Sync;
+pub type Function = dyn Fn(&mut VirtualMachine, &[YarnValue]) + Send + Sync;
 
 pub enum YarnFunction {
     Void(&'static Function),
@@ -91,7 +100,7 @@ pub enum YarnFunction {
 }
 
 impl YarnFunction {
-    pub fn call(&self, vm: &VirtualMachine, params: &[YarnValue]) -> Option<YarnValue> {
+    pub fn call(&self, vm: &mut VirtualMachine, params: &[YarnValue]) -> Option<YarnValue> {
         match self {
             Self::Void(func) => {
                 (func)(vm, params);
@@ -188,6 +197,9 @@ pub struct VirtualMachine {
     pub program: Program,
 
     visit_counter: HashMap<String, usize>,
+
+    #[cfg(feature = "random")]
+    rand: StdRng,
 }
 
 impl VirtualMachine {
@@ -195,9 +207,12 @@ impl VirtualMachine {
         let mut library = HashMap::new();
 
         add_mathematical_functions(&mut library);
+        add_number_utility_functions(&mut library);
         add_logic_functions(&mut library);
         add_visited_functions(&mut library);
 
+        #[cfg(feature = "random")]
+        add_random_functions(&mut library);
 
         Self {
             state: VmState::new(),
@@ -206,6 +221,9 @@ impl VirtualMachine {
             execution_state: ExecutionState::Stopped,
             program,
             visit_counter: HashMap::new(),
+
+            #[cfg(feature = "random")]
+            rand: SeedableRng::from_entropy(),
         }
     }
 
@@ -234,7 +252,7 @@ impl VirtualMachine {
     }
 
     // TODO: Return the reason why we stopped execution.
-    // Either Line, Options, Command, NodeStart?, NodeEnd?, DialogeEnd
+    // Either Line, Options, Command, NodeStart?, NodeEnd?, DialogueEnd
     pub fn continue_dialogue(&mut self) -> Result<SuspendReason, VmError> {
         if self.state.current_node_name.is_empty() {
             if self.execution_state == ExecutionState::Stopped {
@@ -358,7 +376,8 @@ impl VirtualMachine {
             }
             OpCode::RunLine => {
                 // Looks up a string from the string table and passes it to the client as a line.
-                if let Some(Value::StringValue(string_key)) = &instruction.operands[0].value {
+                return if let Some(Value::StringValue(string_key)) = &instruction.operands[0].value
+                {
                     let mut substitutions = Vec::new();
 
                     // The second operand, if provided (compilers prior
@@ -381,14 +400,14 @@ impl VirtualMachine {
 
                     self.execution_state = ExecutionState::Suspended;
                     let line = Line::new(string_key.clone(), substitutions);
-                    return Ok(SuspendReason::Line(line));
+                    Ok(SuspendReason::Line(line))
                 } else {
-                    return Err("Invalid run line - no label in the value".into());
-                }
+                    Err("Invalid run line - no label in the value".into())
+                };
             }
             OpCode::RunCommand => {
                 // Passes a string to the client as a custom command
-                if let Some(Value::StringValue(command)) = &instruction.operands[0].value {
+                return if let Some(Value::StringValue(command)) = &instruction.operands[0].value {
                     let mut command_text = command.clone();
 
                     // The second operand, if provided (compilers prior
@@ -416,10 +435,10 @@ impl VirtualMachine {
                     }
 
                     self.execution_state = ExecutionState::Suspended;
-                    return Ok(SuspendReason::Command(command_text));
+                    Ok(SuspendReason::Command(command_text))
                 } else {
-                    return Err("Invalid run command - no label in the value".into());
-                }
+                    Err("Invalid run command - no label in the value".into())
+                };
             }
             OpCode::AddOption => {
                 let line = if let Some(Value::StringValue(opt)) =
@@ -551,7 +570,11 @@ impl VirtualMachine {
                     // functions are, e.g. "Number.EqualTo", but we only want "EqualTo"
                     let func_name = func_name.split(".").last().unwrap().to_owned();
 
-                    if let Some(function) = self.library.get(&func_name) {
+                    // We need to `take` here as we borrow "self" when getting the FunctionInfo and
+                    // therefore can't pass a mutable borrow into `function.func.call()`.
+                    let function_library = std::mem::take(&mut self.library);
+
+                    if let Some(function) = function_library.get(&func_name) {
                         let actual_param_count = self.state.stack.pop().unwrap().as_number() as u8;
 
                         // If a function is variadic, it takes as many parameters as it was given.
@@ -585,7 +608,11 @@ impl VirtualMachine {
                             // If the function returns a value, push it.
                             self.state.stack.push(result);
                         }
+
+                        self.library = function_library;
                     } else {
+                        // make sure we "undo" the std::mem::take aobve
+                        self.library = function_library;
                         return Err(VmError::MissingLibraryFunction(func_name.clone()));
                     }
                 } else {
@@ -622,7 +649,7 @@ impl VirtualMachine {
                 return Ok(SuspendReason::DialogueComplete(last_node));
             }
             OpCode::RunNode => {
-                if let Some(YarnValue::Str(node_name)) = self.state.stack.pop() {
+                return if let Some(YarnValue::Str(node_name)) = self.state.stack.pop() {
                     let old_node = self.state.current_node_name.clone();
 
                     self.set_node(&node_name)?;
@@ -634,13 +661,13 @@ impl VirtualMachine {
 
                     self.execution_state = ExecutionState::Suspended;
 
-                    return Ok(SuspendReason::NodeChange {
+                    Ok(SuspendReason::NodeChange {
                         start: node_name,
                         end: old_node,
-                    });
+                    })
                 } else {
-                    return Err("Invalid run node - no items in the stack".into());
-                }
+                    Err("Invalid run node - no items in the stack".into())
+                };
             }
         }
 
@@ -661,5 +688,10 @@ impl VirtualMachine {
                 label, self.state.current_node_name
             );
         }
+    }
+
+    #[cfg(feature = "random")]
+    pub fn set_random_seed(&mut self, seed: u64) {
+        self.rand = SeedableRng::seed_from_u64(seed);
     }
 }

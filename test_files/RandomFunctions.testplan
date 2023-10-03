@@ -1,0 +1,18 @@
+# this should be repeatable because we seed the RNG in the test setup
+
+line: dice 4
+line: dice 6
+
+line: random 0.8831156
+line: random 0.65193355
+line: random 0.5465919
+
+line: random_range 84
+line: random_range 101
+line: random_range 33
+line: random_range 58
+
+line: random_test false
+line: random_test false
+line: random_test true
+line: random_test false

@@ -1,0 +1,39 @@
+title: Start
+---
+dice {dice(6)}
+dice {dice(6)}
+
+random {random()}
+random {random()}
+random {random()}
+
+random_range {random_range(70, 120)}
+random_range {random_range(70, 120)}
+random_range {random_range(7, 65)}
+random_range {random_range(7, 65)}
+
+<<if random_test(0.5)>>
+random_test true
+<<else>>
+random_test false
+<<endif>>
+
+<<if random_test(0.5)>>
+random_test true
+<<else>>
+random_test false
+<<endif>>
+
+<<if random_test(0.995)>>
+random_test true
+<<else>>
+random_test false
+<<endif>>
+
+<<if random_test(0.005)>>
+random_test true
+<<else>>
+random_test false
+<<endif>>
+
+===

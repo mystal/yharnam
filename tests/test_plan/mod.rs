@@ -183,6 +183,12 @@ impl PlanRunner {
         }
     }
 
+    /// Gets a mutable ref to the [VirtualMachine] so that it can be configured
+    /// for the test (for instance to seed the RNG).
+    pub fn get_vm(&mut self) -> &mut VirtualMachine {
+        &mut self.vm
+    }
+
     fn get_tags_for_line(&self, line: &Line) -> Vec<String> {
         self.metadata_table
             .iter()
